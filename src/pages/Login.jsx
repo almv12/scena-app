@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase'
 
 export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [showRegister, setShowRegister] = useState(false)
+  const [phone, setPhone] = useState('+998')
+  const [tgData, setTgData] = useState(null)
 
   useEffect(function() {
     tryTelegramLogin()
@@ -17,8 +19,10 @@ export default function Login({ onLogin }) {
         tg.expand()
         var tgUser = tg.initDataUnsafe.user
         var telegramId = tgUser.id
-        var fullName = (tgUser.first_name || '') + ' ' + (tgUser.last_name || '')
-        fullName = fullName.trim()
+        var fullName = ((tgUser.first_name || '') + ' ' + (tgUser.last_name || '')).trim()
+        var username = tgUser.username || ''
+
+        setTgData({ telegramId: telegramId, fullName: fullName, username: username, photo: tgUser.photo_url })
 
         var { data: existingUser } = await supabase
           .from('users')
@@ -31,26 +35,34 @@ export default function Login({ onLogin }) {
           return
         }
 
-        var { data: newUser } = await supabase
-          .from('users')
-          .insert({
-            telegram_id: telegramId,
-            full_name: fullName,
-            role: 'student',
-            avatar_url: tgUser.photo_url || null
-          })
-          .select()
-          .single()
-
-        if (newUser) {
-          onLogin(newUser)
-          return
-        }
+        setShowRegister(true)
+        setLoading(false)
+        return
       }
     } catch (e) {
-      console.log('Telegram auth error:', e)
+      console.log('Auth error:', e)
     }
     setLoading(false)
+  }
+
+  async function handleRegister() {
+    if (phone.length < 13) return
+
+    var { data: newUser } = await supabase
+      .from('users')
+      .insert({
+        telegram_id: tgData.telegramId,
+        full_name: tgData.fullName,
+        phone: phone,
+        role: 'student',
+        avatar_url: tgData.photo || null
+      })
+      .select()
+      .single()
+
+    if (newUser) {
+      onLogin(newUser)
+    }
   }
 
   function loginAsStudent() {
@@ -71,6 +83,33 @@ export default function Login({ onLogin }) {
     )
   }
 
+  if (showRegister) {
+    return (
+      <div className="login-page">
+        <div className="login-logo">🎵</div>
+        <h1>Добро пожаловать!</h1>
+        <p>{tgData.fullName}, для завершения регистрации введите номер телефона</p>
+        <input
+          type="tel"
+          value={phone}
+          onChange={function(e) { setPhone(e.target.value) }}
+          placeholder="+998 90 123 45 67"
+          style={{
+            width: '100%', padding: '14px', borderRadius: '12px',
+            border: '1px solid #f0f0f0', fontSize: '16px',
+            textAlign: 'center', marginBottom: '12px'
+          }}
+        />
+        <button className="btn btn-primary" onClick={handleRegister}>
+          Продолжить
+        </button>
+        <p style={{ marginTop: 16, fontSize: 12, color: '#aaa' }}>
+          Номер нужен для связи с вашим аккаунтом в школе
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="login-page">
       <div className="login-logo">🎵</div>
@@ -83,7 +122,7 @@ export default function Login({ onLogin }) {
         Войти как педагог (демо)
       </button>
       <p style={{ marginTop: 24, fontSize: 12, color: '#aaa' }}>
-        Откройте через Telegram для<br />автоматического входа
+        Откройте через Telegram для автоматического входа
       </p>
     </div>
   )
