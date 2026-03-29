@@ -1,0 +1,80 @@
+:root {
+  --bg: #ffffff;
+  --bg2: #f5f5f5;
+  --text: #1a1a1a;
+  --text2: #888888;
+  --accent: #1D9E75;
+  --accent-light: #E1F5EE;
+  --border: #f0f0f0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app { min-height: 100vh; padding-bottom: 80px; max-width: 480px; margin: 0 auto; }
+.page { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.greeting h1 { font-size: 20px; font-weight: 600; }
+.greeting p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qa-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; }
+.qa-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 8px; }
+.qa-label { font-size: 14px; font-weight: 600; }
+.qa-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+.section-title { font-size: 15px; font-weight: 600; margin: 8px 0 4px; }
+
+.card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.card-click { cursor: pointer; }
+
+.lesson { display: flex; align-items: center; gap: 12px; }
+.lesson-time { font-size: 20px; font-weight: 600; min-width: 50px; }
+.lesson-time-sub { font-size: 11px; color: var(--text2); }
+.lesson-divider { width: 1px; height: 36px; background: var(--border); }
+.lesson-info { flex: 1; }
+.lesson-name { font-size: 14px; font-weight: 600; }
+.lesson-sub { font-size: 12px; color: var(--text2); }
+
+.badge { font-size: 11px; padding: 4px 10px; border-radius: 8px; font-weight: 600; }
+.badge-upcoming { background: #E6F1FB; color: #185FA5; }
+.badge-done { background: #E1F5EE; color: #1D9E75; }
+.badge-warn { background: #FAEEDA; color: #854F0B; }
+
+.progress-bar { height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; margin-top: 4px; width: 100px; }
+.progress-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+.btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+.checkin-card { text-align: center; padding: 20px; }
+.checkin-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--accent); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 28px; }
+.checkin-btn.checked { background: var(--accent-light); }
+.checkin-label { font-size: 15px; font-weight: 600; }
+.checkin-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--bg); border-top: 1px solid var(--border); padding: 8px 0 12px; max-width: 480px; margin: 0 auto; z-index: 100; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font-size: 11px; color: var(--text2); background: none; border: none; padding: 4px 0; }
+.nav-item.active { color: var(--accent); }
+
+.avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+
+.login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; text-align: center; }
+.login-logo { font-size: 48px; margin-bottom: 16px; }
+.login-page h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.login-page p { font-size: 14px; color: var(--text2); margin-bottom: 32px; }
+
+.salary-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; }
+.salary-label { color: var(--text2); }
+.salary-value { font-weight: 600; }
+.salary-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+
+.breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.breadcrumb button { background: none; border: none; cursor: pointer; padding: 4px; display: flex; color: var(--text2); }
+.breadcrumb span { font-size: 15px; font-weight: 600; }
