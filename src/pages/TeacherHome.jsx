@@ -10,12 +10,9 @@ export default function TeacherHome({ user }) {
   const firstName = user?.full_name?.split(' ')[0] || 'Педагог'
 
   var branches = [
-    { name: 'Mirzo Ulugbek', lat: 41.3385, lng: 69.3346 },
-    { name: 'Chilanzar', lat: 41.2858, lng: 69.2085 },
-    { name: 'Sergeli', lat: 41.2275, lng: 69.2283 },
-    { name: 'Yunusabad', lat: 41.3650, lng: 69.2850 },
-    { name: 'Yakkasaray', lat: 41.2950, lng: 69.2750 }
-  ]
+    { name: 'Ганди 44', lat: 41.3118, lng: 69.2946 },
+    { name: 'Ганди 29', lat: 41.3135, lng: 69.2920 }
+  ] 
 
   function getDistance(lat1, lng1, lat2, lng2) {
     var R = 6371000
