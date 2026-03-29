@@ -67,3 +67,4 @@ export default function StudentHome({ user, onNavigate }) {
     </div>
   )
 }
+
