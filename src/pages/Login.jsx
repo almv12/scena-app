@@ -51,11 +51,12 @@ export default function Login({ onLogin }) {
     var { data: newUser } = await supabase
       .from('users')
       .insert({
-        telegram_id: tgData.telegramId,
-        full_name: tgData.fullName,
-        phone: phone,
-        role: 'student',
-        avatar_url: tgData.photo || null
+      telegram_id: tgData.id,
+      full_name: tgData.name,
+      phone: phone,
+      role: 'student',
+      avatar_url: tgData.photo || null,
+      username: tgData.username || '-'
       })
       .select()
       .single()
