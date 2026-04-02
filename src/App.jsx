@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import StudentHome from './pages/StudentHome'
 import TeacherHome from './pages/TeacherHome'
 import BottomNav from './components/BottomNav'
+import Salary from './pages/Salary'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -40,37 +41,8 @@ function App() {
               ))}
             </div>
           )
-        case 'salary':
-          return (
-            <div className="page">
-              <div className="section-title">Зарплата — Март 2026</div>
-              <div className="card">
-                <div className="salary-row"><span className="salary-label">Отработано часов</span><span className="salary-value">84 ч</span></div>
-                <div className="salary-row"><span className="salary-label">Проведено уроков</span><span className="salary-value">62</span></div>
-                <div className="salary-row"><span className="salary-label">Индивидуальные</span><span className="salary-value">48 × 45 000</span></div>
-                <div className="salary-row"><span className="salary-label">Групповые</span><span className="salary-value">14 × 60 000</span></div>
-                <div className="salary-row salary-total">
-                  <span className="salary-label" style={{ fontWeight: 600, color: 'var(--text)' }}>Итого</span>
-                  <span className="salary-value" style={{ fontSize: 20 }}>3 000 000 сум</span>
-                </div>
-              </div>
-              <div className="section-title" style={{ marginTop: 8 }}>Check-in журнал</div>
-              <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div className="lesson-name">29 марта, суббота</div>
-                  <span className="badge badge-done">5ч 15м</span>
-                </div>
-                <div className="lesson-sub">13:55 — 19:10</div>
-              </div>
-              <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div className="lesson-name">28 марта, пятница</div>
-                  <span className="badge badge-done">6ч 15м</span>
-                </div>
-                <div className="lesson-sub">13:50 — 20:05</div>
-              </div>
-            </div>
-          )
+        case 'salary': return <Salary user={user} />
+
         default:
           return <TeacherHome user={user} />
       }
