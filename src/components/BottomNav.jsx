@@ -1,28 +1,31 @@
 export default function BottomNav({ currentPage, onNavigate, role }) {
-  const studentTabs = [
+  var studentTabs = [
     { id: 'home', label: 'Главная' },
     { id: 'schedule', label: 'Расписание' },
     { id: 'pay', label: 'Оплата' },
-    { id: 'progress', label: 'Прогресс' },
+    { id: 'progress', label: 'Прогресс' }
   ]
 
-  const teacherTabs = [
+  var teacherTabs = [
     { id: 'home', label: 'Главная' },
     { id: 'students', label: 'Ученики' },
-    { id: 'salary', label: 'Зарплата' },
+    { id: 'salary', label: 'Зарплата' }
   ]
 
-  const tabs = role === 'teacher' ? teacherTabs : studentTabs
+  var adminTabs = [
+    { id: 'home', label: 'Уроки' },
+    { id: 'checkins', label: 'Check-in' },
+    { id: 'rates', label: 'Ставки' },
+    { id: 'users', label: 'Юзеры' }
+  ]
+
+  var tabs = role === 'admin' ? adminTabs : role === 'teacher' ? teacherTabs : studentTabs
 
   return (
     <div className="bottom-nav">
       {tabs.map(function(tab) {
         return (
-          <button
-            key={tab.id}
-            className={'nav-item' + (currentPage === tab.id ? ' active' : '')}
-            onClick={function() { onNavigate(tab.id) }}
-          >
+          <button key={tab.id} className={'nav-item' + (currentPage === tab.id ? ' active' : '')} onClick={function() { onNavigate(tab.id) }}>
             <span>{tab.label}</span>
           </button>
         )
