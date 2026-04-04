@@ -22,8 +22,8 @@ var demoLessons = [
 ]
 
 var branches = [
-{ name: 'Ганди 44', lat: 41.3118, lng: 69.2946 },
-{ name: 'Ганди 29', lat: 41.3135, lng: 69.2920 }
+{ name: 'Ганди 44', lat: 41.31547, lng: 69.29919 },
+{ name: 'Ганди 29', lat: 41.31529, lng: 69.29772 }
 ]
 
 useEffect(function() { loadToday() }, [])
@@ -63,7 +63,7 @@ setCheckInStatus('Определяем...')
 if (!navigator.geolocation) { setCheckInStatus('GPS недоступен'); return }
 navigator.geolocation.getCurrentPosition(function(pos) {
 var r = findNearestBranch(pos.coords.latitude, pos.coords.longitude)
-if (r.distance > 300) {
+if (r.distance > 500) {
 setCheckInStatus('Далеко: ' + r.distance + 'м')
 setSubText(r.branch.name)
 setTimeout(function() { setCheckInStatus('Отметить приход'); setSubText('Нажмите для check-in') }, 3000)
