@@ -49,8 +49,9 @@ export default function Login({ onLogin }) {
       <div className="login-logo">🎵</div>
       <h1>Сцена</h1>
       <p>Музыкальная школа</p>
-      <button className="btn btn-primary" onClick={function(){onLogin({id:'d1',telegram_id:0,full_name:'Азиз Н.',role:'student'})}} style={{marginBottom:12}}>Войти как ученик</button>
-      <button className="btn btn-secondary" onClick={function(){onLogin({id:'d2',telegram_id:0,full_name:'Дмитрий Ким',role:'teacher'})}}>Войти как педагог</button>
+      <button className="btn btn-primary" onClick={function(){onLogin({id:'d1',telegram_id:0,full_name:'Азиз Н.',role:'student'})}} style={{marginBottom:8}}>Войти как ученик</button>
+      <button className="btn btn-secondary" onClick={function(){onLogin({id:'d2',telegram_id:0,full_name:'Дмитрий Ким',role:'teacher'})}} style={{marginBottom:8}}>Войти как педагог</button>
+      <button className="btn btn-secondary" onClick={function(){onLogin({id:'d3',telegram_id:0,full_name:'Admin',role:'admin'})}}>Войти как админ</button>
     </div>
   )
 }
