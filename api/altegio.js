@@ -46,7 +46,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, clients: data.data || [] })
     }
 
-    return res.status(200).json({ ok: true, message: 'use ?action=staff or search or services' })
+    if (action === 'records') {
+      var staffId = req.query.staff_id || ''
+      var dateFrom = req.query.date_from || new Date().toISOString().slice(0, 10)
+      var dateTo = req.query.date_to || dateFrom
+      var url = 'https://app.alteg.io/api/v1/records/' + company + '?staff_id=' + staffId + '&start_date=' + dateFrom + '&end_date=' + dateTo
+      var r = await fetch(url, { headers: headers })
+      var data = await r.json()
+      return res.status(200).json({ ok: true, records: data.data || [] })
+    }
+
+    return res.status(200).json({ ok: true, message: 'use ?action=staff or search or services or records' })
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message })
   }
