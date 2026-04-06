@@ -6,13 +6,9 @@ export default function Login({ onLogin }) {
   const [showReg, setShowReg] = useState(false)
   const [phone, setPhone] = useState('+998')
   const [tgData, setTgData] = useState(null)
-  const [staff, setStaff] = useState([])
+  const [regLoading, setRegLoading] = useState(false)
 
   useEffect(function() {
-    fetch('/api/altegio?action=staff').then(function(r) { return r.json() }).then(function(d) {
-      if (d.ok) setStaff(d.staff || [])
-    }).catch(function() {})
-
     var tg = window.Telegram && window.Telegram.WebApp
     if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
       tg.ready()
@@ -26,32 +22,26 @@ export default function Login({ onLogin }) {
     } else { setLoading(false) }
   }, [])
 
-  function doReg() {
+  async function doReg() {
     if (phone.length < 13) return
-    var cleanPhone = phone.replace('+', '')
-    var role = 'student'
-    var staffId = null
-
-    for (var i = 0; i < staff.length; i++) {
-      var s = staff[i]
-      if (s.name && tgData.fullName && s.name.toLowerCase().indexOf(tgData.fullName.split(' ')[0].toLowerCase()) >= 0) {
-        role = 'teacher'
-        staffId = s.id
-        break
-      }
-    }
-
-    supabase.from('users').insert({
+    setRegLoading(true)
+    var { data, error } = await supabase.from('users').insert({
       telegram_id: tgData.telegramId,
       full_name: tgData.fullName,
       phone: phone,
-      role: role,
+      role: 'pending',
       avatar_url: tgData.photo,
-      username: tgData.username,
-      altegio_staff_id: staffId
-    }).select().single().then(function(r) {
-      if (r.data) { onLogin(r.data) } else { alert(JSON.stringify(r.error)) }
-    })
+      username: tgData.username
+    }).select().single()
+
+    if (data) {
+      var msg = '🆕 Новая регистрация!\n\n👤 ' + tgData.fullName + '\n📱 ' + phone + '\n💬 @' + tgData.username + '\n🆔 TG: ' + tgData.telegramId
+      fetch('/api/webhook?action=notify&chat_id=672402&text=' + encodeURIComponent(msg))
+      onLogin(data)
+    } else {
+      alert(JSON.stringify(error))
+    }
+    setRegLoading(false)
   }
 
   if (loading && !showReg) {
@@ -63,9 +53,9 @@ export default function Login({ onLogin }) {
       <div className="login-page">
         <div className="login-logo">🎵</div>
         <h1>Добро пожаловать!</h1>
-        <p>{tgData.fullName}, введите номер</p>
-        <input type="tel" value={phone} onChange={function(e){setPhone(e.target.value)}} style={{width:'100%',padding:14,borderRadius:12,border:'1px solid var(--border)',fontSize:16,textAlign:'center',marginBottom:12,background:'var(--bg2)',color:'var(--text)'}} />
-        <button className="btn btn-primary" onClick={doReg}>Продолжить</button>
+        <p>{tgData.fullName}, введите номер телефона</p>
+        <input type="tel" value={phone} onChange={function(e){setPhone(e.target.value)}} style={{width:'100%',padding:14,borderRadius:14,border:'1px solid var(--border)',fontSize:16,textAlign:'center',marginBottom:12,background:'var(--bg2)',color:'var(--text)',fontFamily:'inherit'}} />
+        <button className="btn btn-primary" onClick={doReg} disabled={regLoading}>{regLoading ? 'Регистрация...' : 'Продолжить'}</button>
       </div>
     )
   }
@@ -75,8 +65,8 @@ export default function Login({ onLogin }) {
       <div className="login-logo">🎵</div>
       <h1>Сцена</h1>
       <p>Музыкальная школа</p>
-      <button className="btn btn-primary" onClick={function(){onLogin({id:'d1',telegram_id:0,full_name:'Азиз Н.',role:'student'})}} style={{marginBottom:8}}>Войти как ученик</button>
-      <button className="btn btn-secondary" onClick={function(){onLogin({id:'d2',telegram_id:0,full_name:'Дмитрий Ким',role:'teacher'})}} style={{marginBottom:8}}>Войти как педагог</button>
+      <button className="btn btn-primary" onClick={function(){onLogin({id:'d1',telegram_id:0,full_name:'Демо Ученик',role:'student'})}} style={{marginBottom:8}}>Войти как ученик</button>
+      <button className="btn btn-secondary" onClick={function(){onLogin({id:'d2',telegram_id:0,full_name:'Демо Педагог',role:'teacher'})}} style={{marginBottom:8}}>Войти как педагог</button>
       <button className="btn btn-secondary" onClick={function(){onLogin({id:'d3',telegram_id:0,full_name:'Admin',role:'admin'})}}>Войти как админ</button>
     </div>
   )
