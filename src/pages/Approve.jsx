@@ -4,12 +4,16 @@ import { supabase } from '../lib/supabase'
 export default function Approve() {
   const [lessons, setLessons] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(function() { load() }, [])
 
   async function load() {
-    var { data } = await supabase.from('conducted_lessons').select('*').order('created_at', { ascending: false }).limit(100)
-    if (data) setLessons(data)
+    try {
+      var { data, error } = await supabase.from('conducted_lessons').select('*').order('created_at', { ascending: false }).limit(100)
+      if (error) { setError(JSON.stringify(error)); setLoading(false); return }
+      if (data) setLessons(data)
+    } catch(e) { setError(e.message) }
     setLoading(false)
   }
 
@@ -27,17 +31,20 @@ export default function Approve() {
   var done = lessons.filter(function(l) { return l.status !== 'pending' })
   var attLabels = { present: 'Был', late: 'Опоздал', absent: 'Не пришёл', cancelled: 'Отменён' }
 
+  if (error) return <div className="page"><div className="card" style={{color:'var(--red)',fontSize:13}}>Ошибка: {error}</div></div>
+
   return (
     <div className="page">
       <div className="section-title" style={{color:'var(--gold)'}}>На подтверждении ({pending.length})</div>
       {loading && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Загрузка...</div>}
-      {!loading && pending.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Все уроки подтверждены</div>}
+      {!loading && lessons.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Уроков пока нет. Педагоги ещё не отмечали уроки.</div>}
+      {!loading && pending.length === 0 && lessons.length > 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Все уроки подтверждены</div>}
       {pending.map(function(l) {
         return (
           <div className="card" key={l.id}>
             <div className="lesson-name">{l.student_name}</div>
             <div className="lesson-sub">{l.lesson_date} · {l.lesson_time} · {l.instrument} · {l.lesson_type === 'group' ? 'Групп.' : 'Индив.'}</div>
-            {l.attendance !== 'present' && <div style={{fontSize:12,color:'var(--red)',marginTop:4}}>{attLabels[l.attendance] || l.attendance}{l.late_minutes > 0 ? ' ' + l.late_minutes + ' мин' : ''}</div>}
+            {l.attendance !== 'present' && <div style={{fontSize:12,color:'var(--red)',marginTop:4}}>{attLabels[l.attendance] || l.attendance}</div>}
             {l.note && <div style={{fontSize:12,color:'var(--text3)',marginTop:4}}>{l.note}</div>}
             <div style={{display:'flex',gap:8,marginTop:10}}>
               <button className="btn btn-primary" style={{flex:1,padding:10,fontSize:13}} onClick={function(){approve(l.id)}}>Подтвердить</button>
