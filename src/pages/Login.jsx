@@ -68,6 +68,7 @@ export default function Login({ onLogin }) {
       <button className="btn btn-primary" onClick={function(){onLogin({id:'d1',telegram_id:0,full_name:'Демо Ученик',role:'student'})}} style={{marginBottom:8}}>Войти как ученик</button>
       <button className="btn btn-secondary" onClick={function(){onLogin({id:'d2',telegram_id:0,full_name:'Демо Педагог',role:'teacher'})}} style={{marginBottom:8}}>Войти как педагог</button>
       <button className="btn btn-secondary" onClick={function(){onLogin({id:'d3',telegram_id:0,full_name:'Admin',role:'admin'})}}>Войти как админ</button>
+      <button className="btn btn-secondary" onClick={function(){onLogin({id:'d4',telegram_id:0,full_name:'Pending User',role:'pending',phone:'+998000000000',username:'test'})}} style={{marginTop:8}}>Тест pending</button>
     </div>
   )
 }
