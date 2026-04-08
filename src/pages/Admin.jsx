@@ -12,7 +12,10 @@ export default function Admin({ page }) {
   const [msgRole, setMsgRole] = useState('all')
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState(null)
-  const [editUser, setEditUser] = useState(null)
+  const [editId, setEditId] = useState(null)
+  const [rateEdit, setRateEdit] = useState(null)
+  const [indivRate, setIndivRate] = useState('')
+  const [groupRate, setGroupRate] = useState('')
 
   useEffect(function() { loadData() }, [page, dateFilter])
 
@@ -20,8 +23,8 @@ export default function Admin({ page }) {
     setLoading(true)
     if (page === 'home') {
       var r = await fetch('/api/altegio?action=records&date_from=' + dateFilter + '&date_to=' + dateFilter)
-      var data = await r.json()
-      if (data.ok) setRecords(data.records || [])
+      var d = await r.json()
+      if (d.ok) setRecords(d.records || [])
     }
     if (page === 'checkins') {
       var { data } = await supabase.from('checkins').select('*').order('check_in_at', { ascending: false }).limit(50)
@@ -39,14 +42,27 @@ export default function Admin({ page }) {
 
   async function changeRole(userId, newRole) {
     await supabase.from('users').update({ role: newRole }).eq('id', userId)
+    setEditId(null)
     loadData()
-    setEditUser(null)
   }
 
-  async function linkStaff(userId, staffId) {
+  async function linkStaff(userId, staffId, staffName) {
     await supabase.from('users').update({ altegio_staff_id: staffId, role: 'teacher' }).eq('id', userId)
+    setEditId(null)
     loadData()
-    setEditUser(null)
+  }
+
+  async function saveRate(userId) {
+    if (!indivRate || !groupRate) return
+    var { data: existing } = await supabase.from('teacher_rates').select('*').eq('teacher_id', userId).single()
+    if (existing) {
+      await supabase.from('teacher_rates').update({ individual_rate: Number(indivRate), group_rate: Number(groupRate) }).eq('teacher_id', userId)
+    } else {
+      await supabase.from('teacher_rates').insert({ teacher_id: userId, individual_rate: Number(indivRate), group_rate: Number(groupRate) })
+    }
+    setRateEdit(null)
+    setIndivRate('')
+    setGroupRate('')
   }
 
   async function sendBroadcast() {
@@ -59,13 +75,10 @@ export default function Admin({ page }) {
     })
     var sent = 0
     for (var i = 0; i < ids.length; i++) {
-      try {
-        await fetch('/api/webhook?action=notify&chat_id=' + ids[i].telegram_id + '&text=' + encodeURIComponent(msgText))
-        sent++
-      } catch(e) {}
+      try { await fetch('/api/webhook?action=notify&chat_id=' + ids[i].telegram_id + '&text=' + encodeURIComponent(msgText)); sent++ } catch(e) {}
     }
     setSending(false)
-    setSendResult('Отправлено: ' + sent + ' из ' + ids.length)
+    setSendResult('Отправлено: ' + sent)
     setMsgText('')
   }
 
@@ -75,24 +88,24 @@ export default function Admin({ page }) {
     return { text: 'Ждёт', bg: 'var(--gold-light)', color: 'var(--gold)' }
   }
 
-  function getRoleStyle(role) {
+  function getRoleBadge(role) {
     if (role === 'teacher') return { bg: 'var(--green-light)', color: 'var(--green)' }
     if (role === 'admin') return { bg: 'var(--blue-light)', color: 'var(--blue)' }
     if (role === 'pending') return { bg: 'var(--gold-light)', color: 'var(--gold)' }
+    if (role === 'rejected') return { bg: 'var(--red-light)', color: 'var(--red)' }
     return { bg: 'var(--blue-light)', color: 'var(--blue)' }
   }
 
   if (page === 'home') {
     var byStaff = {}
     records.forEach(function(rec) {
-      var name = rec.staff ? rec.staff.name : 'Без педагога'
+      var name = rec.staff ? rec.staff.name : '—'
       if (!byStaff[name]) byStaff[name] = []
       byStaff[name].push(rec)
     })
     var staffNames = Object.keys(byStaff).sort()
     var attended = records.filter(function(r) { return r.attendance === 1 }).length
     var missed = records.filter(function(r) { return r.attendance === -1 }).length
-
     return (
       <div className="page">
         <input type="date" value={dateFilter} onChange={function(e){setDateFilter(e.target.value)}} style={{width:'100%',padding:10,borderRadius:12,border:'1px solid var(--border)',fontSize:14,marginBottom:8,background:'var(--bg2)',color:'var(--text)',fontFamily:'inherit'}} />
@@ -102,125 +115,116 @@ export default function Admin({ page }) {
           <div><div style={{fontSize:20,fontWeight:700,color:'var(--red)'}}>{missed}</div><div style={{fontSize:11,color:'var(--text2)'}}>Пропуск</div></div>
         </div>
         {staffNames.map(function(name) {
-          var recs = byStaff[name]
-          recs.sort(function(a,b) { return a.date > b.date ? 1 : -1 })
-          return (
-            <div key={name}>
-              <div className="section-title">{name} ({recs.length})</div>
-              {recs.map(function(rec) {
-                var time = rec.date.slice(11,16)
-                var client = rec.client ? rec.client.display_name : '—'
-                var service = rec.services && rec.services[0] ? rec.services[0].title : ''
-                var badge = getAttLabel(rec.attendance)
-                return (
-                  <div className="card" key={rec.id} style={{display:'flex',alignItems:'center',gap:10}}>
-                    <div style={{minWidth:45,textAlign:'center'}}><div style={{fontSize:15,fontWeight:700,color:'var(--gold)'}}>{time}</div></div>
-                    <div style={{width:1,height:30,background:'var(--border)'}} />
-                    <div style={{flex:1}}><div className="lesson-name" style={{fontSize:13}}>{client}</div><div className="lesson-sub">{service}</div></div>
-                    <span style={{fontSize:10,padding:'3px 6px',borderRadius:8,background:badge.bg,color:badge.color,fontWeight:600}}>{badge.text}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )
+          var recs = byStaff[name]; recs.sort(function(a,b){return a.date>b.date?1:-1})
+          return (<div key={name}><div className="section-title">{name} ({recs.length})</div>
+            {recs.map(function(rec) {
+              var time = rec.date.slice(11,16); var client = rec.client ? rec.client.display_name : '—'
+              var service = rec.services && rec.services[0] ? rec.services[0].title : ''; var badge = getAttLabel(rec.attendance)
+              return (<div className="card" key={rec.id} style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{minWidth:45,textAlign:'center'}}><div style={{fontSize:15,fontWeight:700,color:'var(--gold)'}}>{time}</div></div>
+                <div style={{width:1,height:30,background:'var(--border)'}} /><div style={{flex:1}}><div className="lesson-name" style={{fontSize:13}}>{client}</div><div className="lesson-sub">{service}</div></div>
+                <span style={{fontSize:10,padding:'3px 6px',borderRadius:8,background:badge.bg,color:badge.color,fontWeight:600}}>{badge.text}</span></div>)
+            })}</div>)
         })}
       </div>
     )
   }
 
   if (page === 'checkins') {
-    return (
-      <div className="page">
-        <div className="section-title">Check-in журнал</div>
-        {checkins.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Нет записей</div>}
-        {checkins.map(function(c) {
-          var d = new Date(c.check_in_at)
-          return (
-            <div className="card" key={c.id}>
-              <div className="lesson-name">{c.branch_name}</div>
-              <div className="lesson-sub">{d.toLocaleDateString('ru')} · {d.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})}</div>
-            </div>
-          )
-        })}
-      </div>
-    )
+    return (<div className="page"><div className="section-title">Check-in</div>
+      {checkins.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Нет записей</div>}
+      {checkins.map(function(c) { var d = new Date(c.check_in_at); var mins = c.total_minutes || 0
+        return (<div className="card" key={c.id}><div style={{display:'flex',justifyContent:'space-between'}}><div className="lesson-name">{c.branch_name}</div>{mins > 0 && <span className="badge badge-done">{Math.floor(mins/60)}ч {mins%60}м</span>}</div>
+          <div className="lesson-sub">{d.toLocaleDateString('ru')} · {d.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})} {c.check_out_at ? '— ' + new Date(c.check_out_at).toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'}) : '(на смене)'}</div></div>)
+      })}</div>)
   }
 
   if (page === 'notify') {
-    return (
-      <div className="page">
-        <div className="section-title">Отправить сообщение</div>
-        <div className="card">
-          <div style={{marginBottom:10}}>
-            <div style={{fontSize:13,color:'var(--text2)',marginBottom:4}}>Кому</div>
-            <div style={{display:'flex',gap:6}}>
-              <button className={'btn ' + (msgRole==='all'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('all')}}>Все</button>
-              <button className={'btn ' + (msgRole==='student'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('student')}}>Ученики</button>
-              <button className={'btn ' + (msgRole==='teacher'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('teacher')}}>Педагоги</button>
-            </div>
-          </div>
-          <textarea value={msgText} onChange={function(e){setMsgText(e.target.value)}} placeholder="Текст сообщения..." rows={4} />
-          <button className="btn btn-primary" style={{marginTop:8}} onClick={sendBroadcast} disabled={sending}>{sending ? 'Отправка...' : '📢 Отправить'}</button>
-          {sendResult && <div style={{marginTop:8,fontSize:13,color:'var(--green)',textAlign:'center'}}>{sendResult}</div>}
-        </div>
+    return (<div className="page"><div className="section-title">Рассылка</div><div className="card">
+      <div style={{display:'flex',gap:6,marginBottom:8}}>
+        <button className={'btn '+(msgRole==='all'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('all')}}>Все</button>
+        <button className={'btn '+(msgRole==='student'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('student')}}>Ученики</button>
+        <button className={'btn '+(msgRole==='teacher'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('teacher')}}>Педагоги</button>
       </div>
-    )
+      <textarea value={msgText} onChange={function(e){setMsgText(e.target.value)}} placeholder="Текст..." rows={3} />
+      <button className="btn btn-primary" style={{marginTop:8}} onClick={sendBroadcast} disabled={sending}>{sending?'...':'Отправить'}</button>
+      {sendResult && <div style={{marginTop:8,fontSize:13,color:'var(--green)',textAlign:'center'}}>{sendResult}</div>}
+    </div></div>)
   }
 
   if (page === 'users') {
-    var pending = users.filter(function(u) { return u.role === 'pending' })
-    var active = users.filter(function(u) { return u.role !== 'pending' })
+    var pending = users.filter(function(u){return u.role==='pending'})
+    var teachers = users.filter(function(u){return u.role==='teacher'})
+    var students = users.filter(function(u){return u.role==='student'})
+    var others = users.filter(function(u){return u.role!=='pending'&&u.role!=='teacher'&&u.role!=='student'})
+
+    function renderUser(u, showActions) {
+      var rb = getRoleBadge(u.role)
+      var staffName = ''
+      if (u.altegio_staff_id) { var found = staff.find(function(s){return s.id===u.altegio_staff_id}); if (found) staffName = found.name }
+      return (
+        <div className="card" key={u.id}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div className="avatar">{u.full_name?u.full_name[0]:'?'}</div>
+            <div style={{flex:1}}>
+              <div className="lesson-name">{u.full_name}</div>
+              <div className="lesson-sub">{u.phone} · @{u.username||'-'}</div>
+              {staffName && <div className="lesson-sub" style={{color:'var(--green)'}}>Altegio: {staffName}</div>}
+            </div>
+            <span style={{fontSize:11,padding:'3px 8px',borderRadius:8,background:rb.bg,color:rb.color,fontWeight:600,cursor:'pointer'}} onClick={function(){setEditId(editId===u.id?null:u.id)}}>{u.role}</span>
+          </div>
+          {editId === u.id && (
+            <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Сменить роль:</div>
+              <div style={{display:'flex',gap:6,marginBottom:8}}>
+                <button className="btn btn-primary" style={{flex:1,padding:8,fontSize:12}} onClick={function(){changeRole(u.id,'student')}}>Ученик</button>
+                <button className="btn btn-secondary" style={{flex:1,padding:8,fontSize:12,color:'var(--green)'}} onClick={function(){setEditId('staff-'+u.id)}}>Педагог</button>
+                <button className="btn btn-secondary" style={{flex:1,padding:8,fontSize:12}} onClick={function(){changeRole(u.id,'admin')}}>Админ</button>
+              </div>
+              <button className="btn btn-secondary" style={{padding:6,fontSize:11,color:'var(--red)'}} onClick={function(){changeRole(u.id,'rejected')}}>Отклонить</button>
+            </div>
+          )}
+          {editId === 'staff-'+u.id && (
+            <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Выберите педагога из Altegio:</div>
+              {staff.map(function(s) {
+                return <button key={s.id} className="btn btn-secondary" style={{marginBottom:4,padding:8,fontSize:13,textAlign:'left'}} onClick={function(){linkStaff(u.id,s.id,s.name)}}>{s.name} — {s.specialization}</button>
+              })}
+              <button className="btn btn-secondary" style={{padding:6,fontSize:11,color:'var(--text3)',marginTop:4}} onClick={function(){setEditId(null)}}>Отмена</button>
+            </div>
+          )}
+          {u.role === 'teacher' && (
+            <div style={{marginTop:8}}>
+              {rateEdit === u.id ? (
+                <div style={{padding:10,background:'var(--bg3)',borderRadius:10}}>
+                  <div style={{fontSize:13,marginBottom:6}}>Индив. ставка:</div>
+                  <input type="number" value={indivRate} onChange={function(e){setIndivRate(e.target.value)}} placeholder="50000" style={{width:'100%',padding:8,borderRadius:8,border:'1px solid var(--border)',marginBottom:6,background:'var(--bg2)',color:'var(--text)',fontSize:14}} />
+                  <div style={{fontSize:13,marginBottom:6}}>Групп. ставка:</div>
+                  <input type="number" value={groupRate} onChange={function(e){setGroupRate(e.target.value)}} placeholder="70000" style={{width:'100%',padding:8,borderRadius:8,border:'1px solid var(--border)',marginBottom:6,background:'var(--bg2)',color:'var(--text)',fontSize:14}} />
+                  <div style={{display:'flex',gap:6}}>
+                    <button className="btn btn-primary" style={{flex:1,padding:8,fontSize:13}} onClick={function(){saveRate(u.id)}}>Сохранить</button>
+                    <button className="btn btn-secondary" style={{flex:1,padding:8,fontSize:13}} onClick={function(){setRateEdit(null)}}>Отмена</button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-secondary" style={{padding:6,fontSize:11}} onClick={function(){setRateEdit(u.id)}}>Установить ставки</button>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
 
     return (
       <div className="page">
-        {pending.length > 0 && <div className="section-title" style={{color:'var(--gold)'}}>Ожидают подтверждения ({pending.length})</div>}
-        {pending.map(function(u) {
-          return (
-            <div className="card" key={u.id}>
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-                <div className="avatar">{u.full_name ? u.full_name[0] : '?'}</div>
-                <div style={{flex:1}}>
-                  <div className="lesson-name">{u.full_name}</div>
-                  <div className="lesson-sub">{u.phone} · @{u.username || '-'}</div>
-                </div>
-                <span style={{fontSize:11,padding:'3px 8px',borderRadius:8,background:'var(--gold-light)',color:'var(--gold)',fontWeight:600}}>pending</span>
-              </div>
-              <div style={{display:'flex',gap:6}}>
-                <button className="btn btn-primary" style={{flex:1,padding:10,fontSize:13}} onClick={function(){changeRole(u.id, 'student')}}>Ученик</button>
-                <button className="btn btn-secondary" style={{flex:1,padding:10,fontSize:13,borderColor:'var(--green)',color:'var(--green)'}} onClick={function(){setEditUser(u)}}>Педагог</button>
-                <button className="btn btn-secondary" style={{flex:0.5,padding:10,fontSize:13,color:'var(--red)'}} onClick={function(){changeRole(u.id, 'rejected')}}>✕</button>
-              </div>
-              {editUser && editUser.id === u.id && (
-                <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
-                  <div style={{fontSize:13,color:'var(--text2)',marginBottom:6}}>Выберите педагога из Altegio:</div>
-                  {staff.map(function(s) {
-                    return (
-                      <button key={s.id} className="btn btn-secondary" style={{marginBottom:4,padding:8,fontSize:13,textAlign:'left'}} onClick={function(){linkStaff(u.id, s.id)}}>
-                        {s.name} — {s.specialization}
-                      </button>
-                    )
-                  })}
-                  <button className="btn btn-secondary" style={{padding:8,fontSize:13,color:'var(--text3)'}} onClick={function(){setEditUser(null)}}>Отмена</button>
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        <div className="section-title">Активные ({active.length})</div>
-        {active.map(function(u) {
-          var rs = getRoleStyle(u.role)
-          return (
-            <div className="card" key={u.id} style={{display:'flex',alignItems:'center',gap:10}}>
-              <div className="avatar">{u.full_name ? u.full_name[0] : '?'}</div>
-              <div style={{flex:1}}>
-                <div className="lesson-name">{u.full_name}</div>
-                <div className="lesson-sub">{u.phone} · @{u.username || '-'}{u.altegio_staff_id ? ' · Altegio: ' + u.altegio_staff_id : ''}</div>
-              </div>
-              <span style={{fontSize:11,padding:'3px 8px',borderRadius:8,background:rs.bg,color:rs.color,fontWeight:600}}>{u.role}</span>
-            </div>
-          )
-        })}
+        {pending.length > 0 && <div className="section-title" style={{color:'var(--gold)'}}>Ожидают ({pending.length})</div>}
+        {pending.map(function(u){return renderUser(u, true)})}
+        {teachers.length > 0 && <div className="section-title">Педагоги ({teachers.length})</div>}
+        {teachers.map(function(u){return renderUser(u)})}
+        {students.length > 0 && <div className="section-title">Ученики ({students.length})</div>}
+        {students.map(function(u){return renderUser(u)})}
+        {others.length > 0 && <div className="section-title">Другие ({others.length})</div>}
+        {others.map(function(u){return renderUser(u)})}
       </div>
     )
   }
