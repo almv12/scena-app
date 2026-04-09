@@ -8,6 +8,7 @@ import Salary from './pages/Salary'
 import MarkLesson from './pages/MarkLesson'
 import Admin from './pages/Admin'
 import Approve from './pages/Approve'
+import Progress from './pages/Progress'
 
 function TeacherStudents({ user }) {
   const [students, setStudents] = useState([])
@@ -126,7 +127,7 @@ function App() {
     }
     if (currentPage === 'home') return <StudentHome user={user} />
     if (currentPage === 'pay') return (<div className="page"><div className="breadcrumb"><button onClick={function(){setCurrentPage('home')}}>← Назад</button><span>Оплата</span></div><div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontSize:12,color:'var(--text2)'}}>Остаток</div><div style={{fontSize:24,fontWeight:700}}>4 из 8</div></div><button className="btn btn-primary" style={{width:'auto',padding:'10px 20px'}}>Пополнить</button></div></div>)
-    if (currentPage === 'progress') return (<div className="page"><div className="breadcrumb"><button onClick={function(){setCurrentPage('home')}}>← Назад</button><span>Прогресс</span></div><div className="card"><div className="lesson-name">Данные из Altegio</div><div className="progress-bar" style={{width:'100%',height:6}}><div className="progress-fill" style={{width:'65%'}} /></div></div></div>)
+    if (currentPage === 'progress') return <Progress user={user} />
     return <StudentHome user={user} />
   }
 
