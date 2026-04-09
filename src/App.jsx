@@ -118,7 +118,6 @@ function App() {
     if (user.role === 'admin') {
       if (currentPage === 'approve') return <Approve />
       if (currentPage === 'ratings') return <Ratings />
-      if (currentPage === 'notify') return <Admin page="notify" />
       return <Admin page={currentPage} />
     }
     if (user.role === 'teacher') {
