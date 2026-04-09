@@ -9,6 +9,7 @@ import MarkLesson from './pages/MarkLesson'
 import Admin from './pages/Admin'
 import Approve from './pages/Approve'
 import Progress from './pages/Progress'
+import Ratings from './pages/Ratings'
 
 function TeacherStudents({ user }) {
   const [students, setStudents] = useState([])
@@ -116,6 +117,8 @@ function App() {
   function renderPage() {
     if (user.role === 'admin') {
       if (currentPage === 'approve') return <Approve />
+      if (currentPage === 'ratings') return <Ratings />
+      if (currentPage === 'notify') return <Admin page="notify" />
       return <Admin page={currentPage} />
     }
     if (user.role === 'teacher') {
@@ -126,8 +129,8 @@ function App() {
       return <TeacherHome user={user} />
     }
     if (currentPage === 'home') return <StudentHome user={user} />
-    if (currentPage === 'pay') return (<div className="page"><div className="breadcrumb"><button onClick={function(){setCurrentPage('home')}}>← Назад</button><span>Оплата</span></div><div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontSize:12,color:'var(--text2)'}}>Остаток</div><div style={{fontSize:24,fontWeight:700}}>4 из 8</div></div><button className="btn btn-primary" style={{width:'auto',padding:'10px 20px'}}>Пополнить</button></div></div>)
     if (currentPage === 'progress') return <Progress user={user} />
+    if (currentPage === 'pay') return (<div className="page"><div className="breadcrumb"><button onClick={function(){setCurrentPage('home')}}>← Назад</button><span>Оплата</span></div><div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontSize:12,color:'var(--text2)'}}>Остаток</div><div style={{fontSize:24,fontWeight:700}}>4 из 8</div></div><button className="btn btn-primary" style={{width:'auto',padding:'10px 20px'}}>Пополнить</button></div></div>)
     return <StudentHome user={user} />
   }
 
