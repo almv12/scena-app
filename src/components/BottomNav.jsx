@@ -1,9 +1,8 @@
 export default function BottomNav({ currentPage, onNavigate, role }) {
   var studentTabs = [
     { id: 'home', label: '🏠 Главная' },
-    { id: 'schedule', label: '📅 Расписание' },
-    { id: 'pay', label: '💰 Оплата' },
-    { id: 'progress', label: '📊 Прогресс' }
+    { id: 'progress', label: '📊 Прогресс' },
+    { id: 'pay', label: '💰 Оплата' }
   ]
 
   var teacherTabs = [
@@ -15,7 +14,7 @@ export default function BottomNav({ currentPage, onNavigate, role }) {
   var adminTabs = [
     { id: 'home', label: '📋 Уроки' },
     { id: 'approve', label: '✅ Проверка' },
-    { id: 'notify', label: '📢 Рассылка' },
+    { id: 'ratings', label: '⭐ Отзывы' },
     { id: 'users', label: '👥 Юзеры' }
   ]
 
