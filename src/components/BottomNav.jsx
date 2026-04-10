@@ -14,7 +14,7 @@ export default function BottomNav({ currentPage, onNavigate, role }) {
   var adminTabs = [
     { id: 'home', label: '📋', sub: 'Уроки' },
     { id: 'approve', label: '✅', sub: 'Проверка' },
-    { id: 'ratings', label: '⭐', sub: 'Отзывы' },
+    { id: 'analytics', label: '📊', sub: 'Анализ' },
     { id: 'notify', label: '📢', sub: 'Рассылка' },
     { id: 'users', label: '👥', sub: 'Юзеры' }
   ]
