@@ -11,6 +11,7 @@ import Approve from './pages/Approve'
 import Progress from './pages/Progress'
 import Ratings from './pages/Ratings'
 import Analytics from './pages/Analytics'
+import Referral from './pages/Referral'
 
 function TeacherStudents({ user }) {
   const [students, setStudents] = useState([])
@@ -33,9 +34,7 @@ function TeacherStudents({ user }) {
             if (r.attendance === -1) map[n].missed++
           }
         })
-        var list = Object.values(map)
-        list.sort(function(a,b){return b.visits - a.visits})
-        setStudents(list)
+        setStudents(Object.values(map).sort(function(a,b){return b.visits-a.visits}))
       }
       setLoading(false)
     }).catch(function(){setLoading(false)})
@@ -51,18 +50,9 @@ function TeacherStudents({ user }) {
         return (
           <div className="card" key={i} style={{display:'flex',alignItems:'center',gap:12}}>
             <div className="avatar">{s.name[0]}</div>
-            <div style={{flex:1}}>
-              <div className="lesson-name">{s.name}</div>
-              <div className="lesson-sub">{s.phone ? '+'+s.phone : ''}</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontSize:14,fontWeight:700,color:'var(--green)'}}>{s.visits}</div>
-              <div style={{fontSize:10,color:'var(--text3)'}}>уроков</div>
-            </div>
-            {s.missed > 0 && <div style={{textAlign:'right'}}>
-              <div style={{fontSize:14,fontWeight:700,color:'var(--red)'}}>{s.missed}</div>
-              <div style={{fontSize:10,color:'var(--text3)'}}>пропуск</div>
-            </div>}
+            <div style={{flex:1}}><div className="lesson-name">{s.name}</div><div className="lesson-sub">{s.phone?'+'+s.phone:''}</div></div>
+            <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--green)'}}>{s.visits}</div><div style={{fontSize:10,color:'var(--text3)'}}>уроков</div></div>
+            {s.missed>0&&<div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--red)'}}>{s.missed}</div><div style={{fontSize:10,color:'var(--text3)'}}>пропуск</div></div>}
           </div>
         )
       })}
@@ -76,15 +66,12 @@ function App() {
   const [markOpen, setMarkOpen] = useState(false)
   const [trialSent, setTrialSent] = useState(false)
 
-  if (!user) {
-    return <Login onLogin={function(u) { setUser(u); setCurrentPage('home') }} />
-  }
+  if (!user) return <Login onLogin={function(u){setUser(u);setCurrentPage('home')}} />
 
   if (user.role === 'pending') {
     return (
       <div className="login-page">
-        <div className="login-logo">🎵</div>
-        <h1>Сцена</h1>
+        <div className="login-logo">🎵</div><h1>Сцена</h1>
         <p style={{marginBottom:24,color:'var(--text2)'}}>Музыкальная школа</p>
         {!trialSent ? (
           <div style={{width:'100%',maxWidth:320}}>
@@ -94,11 +81,10 @@ function App() {
               <div style={{fontSize:13,color:'var(--text2)'}}>Попробуйте любой инструмент бесплатно!</div>
             </div>
             <button className="btn btn-primary" style={{fontSize:16,padding:16}} onClick={function(){
-              var msg = '🎵 Заявка на бесплатный урок!\n\n👤 ' + user.full_name + '\n📱 ' + user.phone + '\n💬 @' + (user.username||'-') + '\n🆔 TG: ' + user.telegram_id
-              fetch('/api/webhook?action=notify&chat_id=672402&text=' + encodeURIComponent(msg))
+              fetch('/api/webhook?action=notify&chat_id=672402&text=' + encodeURIComponent('🎵 Заявка!\n👤 '+user.full_name+'\n📱 '+user.phone+'\n💬 @'+(user.username||'-')))
               setTrialSent(true)
             }}>🎵 Записаться бесплатно</button>
-            <p style={{marginTop:16,fontSize:12,color:'var(--text3)',textAlign:'center'}}>Если вы уже ученик — администратор подтвердит ваш аккаунт</p>
+            <p style={{marginTop:16,fontSize:12,color:'var(--text3)',textAlign:'center'}}>Администратор подтвердит ваш аккаунт</p>
           </div>
         ) : (
           <div style={{textAlign:'center',maxWidth:320}}>
@@ -111,9 +97,7 @@ function App() {
     )
   }
 
-  if (user.role === 'rejected') {
-    return (<div className="login-page"><div className="login-logo">🎵</div><h1>Сцена</h1><p style={{color:'var(--text2)'}}>Ваша заявка не одобрена.</p></div>)
-  }
+  if (user.role === 'rejected') return <div className="login-page"><div className="login-logo">🎵</div><h1>Сцена</h1><p style={{color:'var(--text2)'}}>Ваша заявка не одобрена.</p></div>
 
   function renderPage() {
     if (user.role === 'admin') {
@@ -131,6 +115,7 @@ function App() {
     }
     if (currentPage === 'home') return <StudentHome user={user} />
     if (currentPage === 'progress') return <Progress user={user} />
+    if (currentPage === 'referral') return <Referral user={user} />
     if (currentPage === 'pay') return (<div className="page"><div className="breadcrumb"><button onClick={function(){setCurrentPage('home')}}>← Назад</button><span>Оплата</span></div><div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontSize:12,color:'var(--text2)'}}>Остаток</div><div style={{fontSize:24,fontWeight:700}}>4 из 8</div></div><button className="btn btn-primary" style={{width:'auto',padding:'10px 20px'}}>Пополнить</button></div></div>)
     return <StudentHome user={user} />
   }

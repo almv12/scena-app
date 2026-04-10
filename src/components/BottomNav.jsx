@@ -2,6 +2,7 @@ export default function BottomNav({ currentPage, onNavigate, role }) {
   var studentTabs = [
     { id: 'home', label: '🏠', sub: 'Главная' },
     { id: 'progress', label: '📊', sub: 'Прогресс' },
+    { id: 'referral', label: '🎁', sub: 'Друзья' },
     { id: 'pay', label: '💰', sub: 'Оплата' }
   ]
 

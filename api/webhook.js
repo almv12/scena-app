@@ -9,31 +9,55 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true })
   }
 
-  if (req.method !== 'POST') {
-    return res.status(200).json({ ok: true })
-  }
+  if (req.method !== 'POST') return res.status(200).json({ ok: true })
 
   var body = req.body
-  if (!body || !body.message) {
-    return res.status(200).json({ ok: true })
-  }
+  if (!body || !body.message) return res.status(200).json({ ok: true })
 
   var chatId = body.message.chat.id
   var text = body.message.text || ''
 
-  if (text === '/start') {
-    await sendMessage(botToken, chatId, 'Добро пожаловать в Сцену! 🎵\n\nНажмите кнопку ниже чтобы открыть приложение.', {
-      inline_keyboard: [[
-        { text: 'Открыть Сцену', web_app: { url: 'https://scena-app-proba.vercel.app' } }
-      ]]
-    })
+  if (text.startsWith('/start')) {
+    var param = text.split(' ')[1] || ''
+
+    if (param.startsWith('ref_')) {
+      var referrerId = param.replace('ref_', '')
+      var supabaseUrl = 'https://xkpnjuuxoqwklfviaaeo.supabase.co'
+      var supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+      var headers = { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }
+
+      try {
+        await fetch(supabaseUrl + '/rest/v1/users?telegram_id=eq.' + chatId, {
+          method: 'PATCH',
+          headers: headers,
+          body: JSON.stringify({ referred_by: Number(referrerId) })
+        })
+
+        var rr = await fetch(supabaseUrl + '/rest/v1/users?telegram_id=eq.' + referrerId + '&select=full_name', { headers: headers })
+        var rd = await rr.json()
+        var refName = rd && rd[0] ? rd[0].full_name : 'друг'
+
+        await sendMessage(botToken, chatId, '🎵 Добро пожаловать в Сцену!\n\nВас пригласил(а) ' + refName + '! Запишитесь на бесплатный урок и вы оба получите бонус! 🎁', {
+          inline_keyboard: [[
+            { text: '🎵 Открыть Сцену', web_app: { url: 'https://scena-app-proba.vercel.app' } }
+          ]]
+        })
+
+        await sendMessage(botToken, referrerId, '🎉 Ваш друг перешёл по вашей ссылке! Когда он запишется на урок — вы оба получите бонус! 🎁')
+      } catch(e) {}
+
+    } else {
+      await sendMessage(botToken, chatId, '🎵 Добро пожаловать в Сцену!\n\nМузыкальная школа в Ташкенте.\nГитара, вокал, барабаны, фортепиано и другие инструменты.\n\nНажмите кнопку чтобы открыть приложение:', {
+        inline_keyboard: [[
+          { text: '🎵 Открыть Сцену', web_app: { url: 'https://scena-app-proba.vercel.app' } }
+        ]]
+      })
+    }
   }
 
   if (text === '/schedule') {
     await sendMessage(botToken, chatId, '📅 Откройте приложение чтобы увидеть расписание:', {
-      inline_keyboard: [[
-        { text: 'Моё расписание', web_app: { url: 'https://scena-app-proba.vercel.app' } }
-      ]]
+      inline_keyboard: [[ { text: 'Моё расписание', web_app: { url: 'https://scena-app-proba.vercel.app' } } ]]
     })
   }
 
