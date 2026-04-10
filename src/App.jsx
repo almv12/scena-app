@@ -10,6 +10,7 @@ import Admin from './pages/Admin'
 import Approve from './pages/Approve'
 import Progress from './pages/Progress'
 import Ratings from './pages/Ratings'
+import Analytics from './pages/Analytics'
 
 function TeacherStudents({ user }) {
   const [students, setStudents] = useState([])
@@ -117,6 +118,7 @@ function App() {
   function renderPage() {
     if (user.role === 'admin') {
       if (currentPage === 'approve') return <Approve />
+      if (currentPage === 'analytics') return <Analytics />
       if (currentPage === 'ratings') return <Ratings />
       return <Admin page={currentPage} />
     }
