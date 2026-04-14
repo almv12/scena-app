@@ -12,6 +12,7 @@ import Progress from './pages/Progress'
 import Ratings from './pages/Ratings'
 import Analytics from './pages/Analytics'
 import Referral from './pages/Referral'
+import Schedule from './pages/Schedule'
 
 function TeacherStudents({ user }) {
   const [students, setStudents] = useState([])
@@ -102,6 +103,7 @@ function App() {
   function renderPage() {
     if (user.role === 'admin') {
       if (currentPage === 'approve') return <Approve />
+      if (currentPage === 'schedule') return <Schedule />
       if (currentPage === 'analytics') return <Analytics />
       if (currentPage === 'ratings') return <Ratings />
       return <Admin page={currentPage} />
