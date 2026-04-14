@@ -29,17 +29,48 @@ export default function TeacherHome({ user }) {
   }
 
   async function loadLessons() {
-    if (!user.altegio_staff_id) { setLoading(false); return }
     var today = new Date().toISOString().slice(0,10)
-    try {
-      var r = await fetch('/api/altegio?action=records&date_from=' + today + '&date_to=' + today)
-      var data = await r.json()
-      if (data.ok && data.records) {
-        var filtered = data.records.filter(function(rec) { return rec.staff_id === user.altegio_staff_id })
-        filtered.sort(function(a,b) { return a.date > b.date ? 1 : -1 })
-        setLessons(filtered)
-      }
-    } catch (e) {}
+    var dayOfWeek = new Date().getDay()
+    var all = []
+
+    if (user.altegio_staff_id) {
+      try {
+        var r = await fetch('/api/altegio?action=records&date_from=' + today + '&date_to=' + today)
+        var data = await r.json()
+        if (data.ok && data.records) {
+          var filtered = data.records.filter(function(rec) { return rec.staff_id === user.altegio_staff_id })
+          filtered.forEach(function(rec) {
+            all.push({
+              id: 'a-' + rec.id,
+              time: rec.date.slice(11,16),
+              client: rec.client ? rec.client.display_name : '—',
+              service: rec.services && rec.services[0] ? rec.services[0].title : '',
+              duration: Math.round(rec.length/60),
+              attendance: rec.attendance,
+              source: 'altegio'
+            })
+          })
+        }
+      } catch (e) {}
+    }
+
+    var { data: local } = await supabase.from('schedule').select('*').eq('teacher_id', user.id).eq('status', 'active').or('lesson_date.eq.' + today + ',and(repeat_weekly.eq.true,day_of_week.eq.' + dayOfWeek + ')')
+    if (local) {
+      local.forEach(function(item) {
+        all.push({
+          id: 'l-' + item.id,
+          time: item.lesson_time,
+          client: item.student_name,
+          service: item.instrument,
+          duration: item.lesson_duration,
+          attendance: 0,
+          source: 'local'
+        })
+      })
+    }
+
+    all.sort(function(a,b) { return a.time > b.time ? 1 : -1 })
+    setLessons(all)
     setLoading(false)
   }
 
@@ -96,16 +127,18 @@ export default function TeacherHome({ user }) {
         {checkedIn && <button className="btn btn-secondary" style={{marginTop:12,width:'auto',padding:'8px 24px'}} onClick={handleCheckOut}>Отметить уход</button>}
       </div>
       <div className="section-title">Уроки сегодня</div>
-      {!user.altegio_staff_id && <div className="card" style={{textAlign:'center',color:'var(--text2)',fontSize:13}}>Аккаунт не привязан к Altegio. Обратитесь к администратору.</div>}
-      {loading && user.altegio_staff_id && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Загрузка...</div>}
-      {!loading && user.altegio_staff_id && lessons.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Нет уроков на сегодня</div>}
-      {lessons.map(function(rec) {
-        var time = rec.date.slice(11,16); var client = rec.client ? rec.client.display_name : '—'; var service = rec.services && rec.services[0] ? rec.services[0].title : ''; var badge = getAttBadge(rec.attendance)
+      {loading && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Загрузка...</div>}
+      {!loading && lessons.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Нет уроков на сегодня</div>}
+      {lessons.map(function(l) {
+        var badge = getAttBadge(l.attendance)
         return (
-          <div className="card" key={rec.id} style={{display:'flex',alignItems:'center',gap:12}}>
-            <div style={{minWidth:50,textAlign:'center'}}><div style={{fontSize:16,fontWeight:700,color:'var(--gold)'}}>{time}</div><div style={{fontSize:11,color:'var(--text3)'}}>{Math.round(rec.length/60)}м</div></div>
+          <div className="card" key={l.id} style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{minWidth:50,textAlign:'center'}}><div style={{fontSize:16,fontWeight:700,color:'var(--gold)'}}>{l.time}</div><div style={{fontSize:11,color:'var(--text3)'}}>{l.duration}м</div></div>
             <div style={{width:1,height:36,background:'var(--border)'}} />
-            <div style={{flex:1}}><div className="lesson-name">{client}</div><div className="lesson-sub">{service}</div></div>
+            <div style={{flex:1}}>
+              <div className="lesson-name">{l.client}</div>
+              <div className="lesson-sub">{l.service} <span style={{fontSize:9,color:l.source==='altegio'?'var(--blue)':'var(--gold)'}}>{l.source==='altegio'?'Altegio':'Добавлен'}</span></div>
+            </div>
             <span style={{fontSize:10,padding:'3px 6px',borderRadius:8,background:badge.bg,color:badge.color,fontWeight:600}}>{badge.text}</span>
           </div>
         )
