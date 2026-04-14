@@ -63,11 +63,11 @@ function TeacherStudents({ user }) {
 
 function App() {
   const [user, setUser] = useState(null)
-  const [currentPage, setCurrentPage] = useState('home')
+  const [currentPage, setCurrentPage] = useState('schedule')
   const [markOpen, setMarkOpen] = useState(false)
   const [trialSent, setTrialSent] = useState(false)
 
-  if (!user) return <Login onLogin={function(u){setUser(u);setCurrentPage('home')}} />
+  if (!user) return <Login onLogin={function(u){setUser(u);setCurrentPage(u.role==='admin'?'schedule':'home')}} />
 
   if (user.role === 'pending') {
     return (
@@ -102,8 +102,8 @@ function App() {
 
   function renderPage() {
     if (user.role === 'admin') {
-      if (currentPage === 'approve') return <Approve />
       if (currentPage === 'schedule') return <Schedule />
+      if (currentPage === 'approve') return <Approve />
       if (currentPage === 'analytics') return <Analytics />
       if (currentPage === 'ratings') return <Ratings />
       return <Admin page={currentPage} />
