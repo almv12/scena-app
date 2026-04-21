@@ -1,6 +1,26 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+var SOURCES = [
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'website', label: 'Сайт' },
+  { id: 'referral', label: 'Реферал' },
+  { id: 'call', label: 'Звонок' },
+  { id: 'sign', label: 'Вывеска' },
+  { id: 'friends', label: 'Друзья' },
+  { id: 'event', label: 'Мероприятие' },
+  { id: 'other', label: 'Другое' },
+]
+
+var STATUSES = [
+  { id: 'lead', label: 'Лид', color: '#9498A8' },
+  { id: 'trial', label: 'Пробный', color: '#E08A3C' },
+  { id: 'active', label: 'Активный', color: '#3BA676' },
+  { id: 'frozen', label: 'Заморозка', color: '#4A7EC7' },
+  { id: 'left', label: 'Ушёл', color: '#D4574E' },
+  { id: 'returned', label: 'Вернулся', color: '#8B6CC7' },
+]
+
 export default function Admin({ page }) {
   const [records, setRecords] = useState([])
   const [checkins, setCheckins] = useState([])
@@ -19,15 +39,22 @@ export default function Admin({ page }) {
   const [searchPhone, setSearchPhone] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
+  // НОВОЕ: редактирование имени
+  const [nameEdit, setNameEdit] = useState(null)
+  const [nameValue, setNameValue] = useState('')
+  // НОВОЕ: редактирование статуса/источника
+  const [detailEdit, setDetailEdit] = useState(null)
 
   useEffect(function() { loadData() }, [page, dateFilter])
 
   async function loadData() {
     setLoading(true)
     if (page === 'home') {
-      var r = await fetch('/api/altegio?action=records&date_from=' + dateFilter + '&date_to=' + dateFilter)
-      var d = await r.json()
-      if (d.ok) setRecords(d.records || [])
+      try {
+        var r = await fetch('/api/altegio?action=records&date_from=' + dateFilter + '&date_to=' + dateFilter)
+        var d = await r.json()
+        if (d.ok) setRecords(d.records || [])
+      } catch(e) { setRecords([]) }
     }
     if (page === 'checkins') {
       var { data } = await supabase.from('checkins').select('*').order('check_in_at', { ascending: false }).limit(50)
@@ -36,9 +63,11 @@ export default function Admin({ page }) {
     if (page === 'users' || page === 'notify') {
       var { data } = await supabase.from('users').select('*').order('created_at', { ascending: false })
       if (data) setUsers(data)
-      var s = await fetch('/api/altegio?action=staff')
-      var sd = await s.json()
-      if (sd.ok) setStaff(sd.staff || [])
+      try {
+        var s = await fetch('/api/altegio?action=staff')
+        var sd = await s.json()
+        if (sd.ok) setStaff(sd.staff || [])
+      } catch(e) { setStaff([]) }
     }
     setLoading(false)
   }
@@ -61,9 +90,11 @@ export default function Admin({ page }) {
   async function searchClients(query) {
     if (query.length < 3) return
     setSearching(true)
-    var r = await fetch('/api/altegio?action=search&phone=' + encodeURIComponent(query))
-    var d = await r.json()
-    if (d.ok) setSearchResults(d.clients || [])
+    try {
+      var r = await fetch('/api/altegio?action=search&phone=' + encodeURIComponent(query))
+      var d = await r.json()
+      if (d.ok) setSearchResults(d.clients || [])
+    } catch(e) { setSearchResults([]) }
     setSearching(false)
   }
 
@@ -73,6 +104,28 @@ export default function Admin({ page }) {
     if (data) { await supabase.from('teacher_rates').update({ individual_rate: Number(indivRate), group_rate: Number(groupRate) }).eq('teacher_id', userId) }
     else { await supabase.from('teacher_rates').insert({ teacher_id: userId, individual_rate: Number(indivRate), group_rate: Number(groupRate) }) }
     setRateEdit(null); setIndivRate(''); setGroupRate('')
+  }
+
+  // НОВОЕ: сохранить имя
+  async function saveName(userId) {
+    if (!nameValue.trim()) return
+    await supabase.from('users').update({ full_name: nameValue.trim() }).eq('id', userId)
+    setNameEdit(null); setNameValue(''); loadData()
+  }
+
+  // НОВОЕ: сохранить статус + источник + заметки
+  async function saveDetail() {
+    if (!detailEdit) return
+    var updates = {}
+    if (detailEdit.student_status !== undefined) updates.student_status = detailEdit.student_status
+    if (detailEdit.source !== undefined) updates.source = detailEdit.source
+    if (detailEdit.notes !== undefined) updates.notes = detailEdit.notes
+    if (detailEdit.branch_id !== undefined) updates.branch_id = detailEdit.branch_id || null
+    if (detailEdit.frozen_until !== undefined) updates.frozen_until = detailEdit.frozen_until || null
+    if (detailEdit.trial_date !== undefined) updates.trial_date = detailEdit.trial_date || null
+
+    await supabase.from('users').update(updates).eq('id', detailEdit.id)
+    setDetailEdit(null); loadData()
   }
 
   async function sendBroadcast() {
@@ -98,6 +151,17 @@ export default function Admin({ page }) {
     return { bg: 'var(--blue-light)', color: 'var(--blue)' }
   }
 
+  function getStatusInfo(status) {
+    var found = STATUSES.find(function(s) { return s.id === status })
+    return found || { id: status || 'active', label: status || 'Активный', color: '#3BA676' }
+  }
+
+  function getSourceLabel(source) {
+    var found = SOURCES.find(function(s) { return s.id === source })
+    return found ? found.label : source || '—'
+  }
+
+  // ═══ СТРАНИЦА: Уроки ═══
   if (page === 'home') {
     var byStaff = {}
     records.forEach(function(rec) { var name = rec.staff ? rec.staff.name : '—'; if (!byStaff[name]) byStaff[name] = []; byStaff[name].push(rec) })
@@ -120,18 +184,22 @@ export default function Admin({ page }) {
             return (<div className="card" key={rec.id} style={{display:'flex',alignItems:'center',gap:10}}><div style={{minWidth:45,textAlign:'center'}}><div style={{fontSize:15,fontWeight:700,color:'var(--gold)'}}>{time}</div></div><div style={{width:1,height:30,background:'var(--border)'}} /><div style={{flex:1}}><div className="lesson-name" style={{fontSize:13}}>{client}</div><div className="lesson-sub">{service}</div></div><span style={{fontSize:10,padding:'3px 6px',borderRadius:8,background:badge.bg,color:badge.color,fontWeight:600}}>{badge.text}</span></div>)
           })}</div>)
         })}
+        {!loading && records.length === 0 && <div className="card" style={{textAlign:'center',color:'var(--text2)',fontSize:13}}>Нет уроков. Altegio не подключён или нет записей.</div>}
       </div>
     )
   }
 
+  // ═══ СТРАНИЦА: Check-in ═══
   if (page === 'checkins') {
     return (<div className="page"><div className="section-title">Check-in</div>{checkins.length === 0 && <div className="card" style={{color:'var(--text2)',fontSize:13}}>Нет записей</div>}{checkins.map(function(c) { var d = new Date(c.check_in_at); var mins = c.total_minutes || 0; return (<div className="card" key={c.id}><div style={{display:'flex',justifyContent:'space-between'}}><div className="lesson-name">{c.branch_name}</div>{mins > 0 && <span className="badge badge-done">{Math.floor(mins/60)}ч {mins%60}м</span>}</div><div className="lesson-sub">{d.toLocaleDateString('ru')} · {d.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})} {c.check_out_at ? '— '+new Date(c.check_out_at).toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'}) : '(на смене)'}</div></div>) })}</div>)
   }
 
+  // ═══ СТРАНИЦА: Рассылка ═══
   if (page === 'notify') {
     return (<div className="page"><div className="section-title">Рассылка</div><div className="card"><div style={{display:'flex',gap:6,marginBottom:8}}><button className={'btn '+(msgRole==='all'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('all')}}>Все</button><button className={'btn '+(msgRole==='student'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('student')}}>Ученики</button><button className={'btn '+(msgRole==='teacher'?'btn-primary':'btn-secondary')} style={{flex:1,padding:8,fontSize:13}} onClick={function(){setMsgRole('teacher')}}>Педагоги</button></div><textarea value={msgText} onChange={function(e){setMsgText(e.target.value)}} placeholder="Текст..." rows={3} /><button className="btn btn-primary" style={{marginTop:8}} onClick={sendBroadcast} disabled={sending}>{sending?'...':'Отправить'}</button>{sendResult && <div style={{marginTop:8,fontSize:13,color:'var(--green)',textAlign:'center'}}>{sendResult}</div>}</div></div>)
   }
 
+  // ═══ СТРАНИЦА: Юзеры ═══
   if (page === 'users') {
     var pending = users.filter(function(u){return u.role==='pending'})
     var teachers = users.filter(function(u){return u.role==='teacher'})
@@ -141,19 +209,56 @@ export default function Admin({ page }) {
     function renderUser(u) {
       var rb = getRoleBadge(u.role)
       var staffName = ''; if (u.altegio_staff_id) { var f = staff.find(function(s){return s.id===u.altegio_staff_id}); if (f) staffName = f.name }
+      var statusInfo = getStatusInfo(u.student_status)
+
       return (
         <div className="card" key={u.id}>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <div className="avatar">{u.full_name?u.full_name[0]:'?'}</div>
             <div style={{flex:1}}>
-              <div className="lesson-name">{u.full_name}</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <span className="lesson-name">{u.full_name}</span>
+                {/* Кнопка редактирования имени */}
+                <span style={{cursor:'pointer',fontSize:14}} onClick={function(){setNameEdit(u.id);setNameValue(u.full_name||'')}}>✏️</span>
+              </div>
               <div className="lesson-sub">{u.phone} · @{u.username||'-'}</div>
               {staffName && <div className="lesson-sub" style={{color:'var(--green)'}}>Altegio: {staffName}</div>}
               {u.altegio_client_id && <div className="lesson-sub" style={{color:'var(--blue)'}}>Клиент ID: {u.altegio_client_id}</div>}
+              {/* НОВОЕ: бейджи статуса и источника */}
+              <div style={{display:'flex',gap:4,marginTop:4,flexWrap:'wrap'}}>
+                {u.role === 'student' && (
+                  <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:statusInfo.color+'20',color:statusInfo.color,fontWeight:600}}>{statusInfo.label}</span>
+                )}
+                {u.source && (
+                  <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:'#4A7EC720',color:'#4A7EC7',fontWeight:600}}>{getSourceLabel(u.source)}</span>
+                )}
+                {u.notes && (
+                  <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:'#E08A3C20',color:'#E08A3C',fontWeight:600}} title={u.notes}>📝</span>
+                )}
+              </div>
             </div>
-            <span style={{fontSize:11,padding:'3px 8px',borderRadius:8,background:rb.bg,color:rb.color,fontWeight:600,cursor:'pointer'}} onClick={function(){setEditId(editId===u.id?null:u.id)}}>{u.role}</span>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+              <span style={{fontSize:11,padding:'3px 8px',borderRadius:8,background:rb.bg,color:rb.color,fontWeight:600,cursor:'pointer'}} onClick={function(){setEditId(editId===u.id?null:u.id)}}>{u.role}</span>
+              {/* Кнопка статус/источник для учеников */}
+              {u.role === 'student' && (
+                <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:'var(--bg3)',color:'var(--text2)',cursor:'pointer'}} onClick={function(){setDetailEdit({id:u.id,student_status:u.student_status||'active',source:u.source||'',notes:u.notes||'',frozen_until:u.frozen_until||'',trial_date:u.trial_date||''})}}>⚙️ Подробнее</span>
+              )}
+            </div>
           </div>
 
+          {/* Редактирование имени */}
+          {nameEdit === u.id && (
+            <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Редактировать имя:</div>
+              <input type="text" value={nameValue} onChange={function(e){setNameValue(e.target.value)}} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid var(--border)',fontSize:14,marginBottom:8,background:'var(--bg2)',color:'var(--text)'}} autoFocus />
+              <div style={{display:'flex',gap:6}}>
+                <button className="btn btn-primary" style={{flex:1,padding:8,fontSize:13}} onClick={function(){saveName(u.id)}}>Сохранить</button>
+                <button className="btn btn-secondary" style={{flex:1,padding:8,fontSize:13}} onClick={function(){setNameEdit(null)}}>Отмена</button>
+              </div>
+            </div>
+          )}
+
+          {/* Смена роли */}
           {editId === u.id && (
             <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
               <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Сменить роль:</div>
@@ -166,14 +271,17 @@ export default function Admin({ page }) {
             </div>
           )}
 
+          {/* Привязка к Altegio педагог */}
           {editId === 'staff-'+u.id && (
             <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
               <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Педагог в Altegio:</div>
               {staff.map(function(s) { return <button key={s.id} className="btn btn-secondary" style={{marginBottom:4,padding:8,fontSize:13,textAlign:'left'}} onClick={function(){linkStaff(u.id,s.id)}}>{s.name} — {s.specialization}</button> })}
+              <button className="btn btn-secondary" style={{marginTop:4,padding:8,fontSize:12}} onClick={function(){changeRole(u.id,'teacher')}}>Без Altegio (Сцена 2)</button>
               <button className="btn btn-secondary" style={{padding:6,fontSize:11,color:'var(--text3)',marginTop:4}} onClick={function(){setEditId(null)}}>Отмена</button>
             </div>
           )}
 
+          {/* Привязка к Altegio ученик */}
           {editId === 'client-'+u.id && (
             <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
               <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Найти ученика в Altegio:</div>
@@ -192,6 +300,7 @@ export default function Admin({ page }) {
             </div>
           )}
 
+          {/* Ставки педагога */}
           {u.role === 'teacher' && (
             <div style={{marginTop:8}}>
               {rateEdit === u.id ? (
@@ -221,9 +330,55 @@ export default function Admin({ page }) {
         {students.map(renderUser)}
         {others.length > 0 && <div className="section-title">Другие ({others.length})</div>}
         {others.map(renderUser)}
+
+        {/* НОВОЕ: Модалка редактирования статуса/источника */}
+        {detailEdit && (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100}} onClick={function(){setDetailEdit(null)}}>
+            <div style={{background:'var(--bg)',borderRadius:16,padding:20,width:'90%',maxWidth:400,maxHeight:'80vh',overflowY:'auto'}} onClick={function(e){e.stopPropagation()}}>
+              <div style={{fontSize:16,fontWeight:700,marginBottom:16}}>Подробности ученика</div>
+
+              <div style={{fontSize:13,color:'var(--text2)',marginBottom:4}}>Статус</div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
+                {STATUSES.map(function(s) {
+                  var isActive = detailEdit.student_status === s.id
+                  return <button key={s.id} style={{padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,border:'2px solid '+(isActive?s.color:'var(--border)'),background:isActive?s.color+'20':'var(--bg2)',color:isActive?s.color:'var(--text2)',cursor:'pointer'}} onClick={function(){setDetailEdit(Object.assign({},detailEdit,{student_status:s.id}))}}>{s.label}</button>
+                })}
+              </div>
+
+              <div style={{fontSize:13,color:'var(--text2)',marginBottom:4}}>Источник (откуда пришёл)</div>
+              <select value={detailEdit.source} onChange={function(e){setDetailEdit(Object.assign({},detailEdit,{source:e.target.value}))}} style={{width:'100%',padding:10,borderRadius:10,border:'1px solid var(--border)',fontSize:14,marginBottom:12,background:'var(--bg2)',color:'var(--text)'}}>
+                <option value="">Не указан</option>
+                {SOURCES.map(function(s) { return <option key={s.id} value={s.id}>{s.label}</option> })}
+              </select>
+
+              {detailEdit.student_status === 'trial' && (
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:13,color:'var(--text2)',marginBottom:4}}>Дата пробного</div>
+                  <input type="date" value={detailEdit.trial_date||''} onChange={function(e){setDetailEdit(Object.assign({},detailEdit,{trial_date:e.target.value}))}} style={{width:'100%',padding:10,borderRadius:10,border:'1px solid var(--border)',fontSize:14,background:'var(--bg2)',color:'var(--text)'}} />
+                </div>
+              )}
+
+              {detailEdit.student_status === 'frozen' && (
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:13,color:'var(--text2)',marginBottom:4}}>Заморозка до</div>
+                  <input type="date" value={detailEdit.frozen_until||''} onChange={function(e){setDetailEdit(Object.assign({},detailEdit,{frozen_until:e.target.value}))}} style={{width:'100%',padding:10,borderRadius:10,border:'1px solid var(--border)',fontSize:14,background:'var(--bg2)',color:'var(--text)'}} />
+                </div>
+              )}
+
+              <div style={{fontSize:13,color:'var(--text2)',marginBottom:4}}>Заметки</div>
+              <textarea value={detailEdit.notes} onChange={function(e){setDetailEdit(Object.assign({},detailEdit,{notes:e.target.value}))}} placeholder="Заметки об ученике..." rows={3} style={{width:'100%',padding:10,borderRadius:10,border:'1px solid var(--border)',fontSize:14,marginBottom:12,background:'var(--bg2)',color:'var(--text)',resize:'vertical'}} />
+
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn btn-primary" style={{flex:1,padding:10}} onClick={saveDetail}>Сохранить</button>
+                <button className="btn btn-secondary" style={{flex:1,padding:10}} onClick={function(){setDetailEdit(null)}}>Отмена</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 
   return <div className="page"><p>Загрузка...</p></div>
 }
+
