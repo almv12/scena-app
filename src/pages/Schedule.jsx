@@ -24,7 +24,8 @@ export default function Schedule() {
       if (d.ok) setAltegioRecords(d.records || [])
     } catch(e) { setAltegioRecords([]) }
 
-    var { data: local } = await supabase.from('schedule').select('*').eq('status', 'active').or('lesson_date.eq.' + dateFilter + ',and(repeat_weekly.eq.true,day_of_week.eq.' + new Date(dateFilter).getDay() + ')').order('lesson_time')
+    // ФИКС: start_date вместо lesson_date
+    var { data: local } = await supabase.from('schedule').select('*').eq('status', 'active').or('start_date.eq.' + dateFilter + ',and(repeat_weekly.eq.true,day_of_week.eq.' + new Date(dateFilter).getDay() + ')').order('lesson_time')
     if (local) setLocalItems(local)
 
     var { data: t } = await supabase.from('users').select('*').eq('role', 'teacher')
@@ -38,19 +39,21 @@ export default function Schedule() {
 
   async function saveLesson() {
     var teacher = teachers.find(function(t) { return t.id === form.teacher_id })
+    var lessonDate = form.lesson_date || dateFilter
+    // ФИКС: убрал lesson_date, оставил только start_date
     await supabase.from('schedule').insert({
       teacher_id: form.teacher_id,
       teacher_name: teacher ? teacher.full_name : '',
       student_name: form.student_name,
       instrument: form.instrument,
-      day_of_week: new Date(form.lesson_date || dateFilter).getDay(),
-      lesson_date: form.lesson_date || dateFilter,
+      day_of_week: new Date(lessonDate).getDay(),
       lesson_time: form.lesson_time,
       lesson_duration: Number(form.lesson_duration),
       lesson_type: form.lesson_type,
       repeat_weekly: false,
       branch_name: form.branch_name,
-      start_date: form.lesson_date || dateFilter
+      start_date: lessonDate,
+      status: 'active'
     })
     setShowForm(false)
     setForm({ teacher_id:'', student_name:'', instrument:'Гитара', lesson_date:'', lesson_time:'10:00', lesson_duration:60, lesson_type:'individual', branch_name:'Ганди 44' })
@@ -205,3 +208,4 @@ export default function Schedule() {
     </div>
   )
 }
+

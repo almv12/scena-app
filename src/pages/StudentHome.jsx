@@ -56,7 +56,8 @@ export default function StudentHome({ user }) {
     var { data: local } = await supabase.from('schedule').select('*').eq('student_name', user.full_name).eq('status', 'active')
     if (local) {
       local.forEach(function(item) {
-        var lessonDate = item.lesson_date || start
+        // ФИКС: start_date вместо lesson_date
+        var lessonDate = item.start_date || start
         all.push({
           id: 'l-' + item.id,
           date: lessonDate + 'T' + item.lesson_time + ':00',
@@ -137,3 +138,4 @@ export default function StudentHome({ user }) {
     </div>
   )
 }
+
