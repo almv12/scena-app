@@ -8,11 +8,20 @@ export default function StudentHome({ user }) {
   const [stats, setStats] = useState({ total: 0, attended: 0, missed: 0 })
   const [rateLesson, setRateLesson] = useState(null)
   const [ratedIds, setRatedIds] = useState([])
+  const [balance, setBalance] = useState(0)
+  const [subType, setSubType] = useState('')
   const firstName = user?.full_name?.split(' ')[0] || 'Ученик'
 
   useEffect(function() { loadData() }, [])
 
   async function loadData() {
+    // Загружаем актуальные данные пользователя (баланс мог измениться)
+    var { data: freshUser } = await supabase.from('users').select('lessons_balance, subscription_type').eq('id', user.id).single()
+    if (freshUser) {
+      setBalance(freshUser.lessons_balance || 0)
+      setSubType(freshUser.subscription_type || '')
+    }
+
     var clientId = user.altegio_client_id
     var phone = user.phone ? user.phone.replace('+', '') : ''
     var now = new Date()
@@ -56,7 +65,6 @@ export default function StudentHome({ user }) {
     var { data: local } = await supabase.from('schedule').select('*').eq('student_name', user.full_name).eq('status', 'active')
     if (local) {
       local.forEach(function(item) {
-        // ФИКС: start_date вместо lesson_date
         var lessonDate = item.start_date || start
         all.push({
           id: 'l-' + item.id,
@@ -97,9 +105,22 @@ export default function StudentHome({ user }) {
   var upcoming = lessons.filter(function(l){return l.date.slice(0,10)>today})
   var past = lessons.filter(function(l){return l.date.slice(0,10)<today && l.attendance===1})
 
+  var balanceColor = balance <= 0 ? 'var(--red)' : balance <= 2 ? 'var(--gold)' : 'var(--green)'
+
   return (
     <div className="page">
       <div className="greeting"><h1>Привет, {firstName}!</h1><p>{loading?'Загрузка...':stats.total+' уроков в этом месяце'}</p></div>
+
+      {/* Баланс уроков */}
+      <div className="card" style={{background:'linear-gradient(135deg, var(--gold-light), var(--gold))',color:'#fff',textAlign:'center',padding:16}}>
+        <div style={{fontSize:11,opacity:0.85,textTransform:'uppercase',letterSpacing:1}}>Баланс уроков</div>
+        <div style={{fontSize:36,fontWeight:800,margin:'4px 0'}}>{balance}</div>
+        {subType && <div style={{fontSize:12,opacity:0.8}}>Пакет: {subType}</div>}
+        {balance <= 0 && <div style={{fontSize:12,marginTop:6,fontWeight:600}}>⚠️ Продлите абонемент!</div>}
+        {balance > 0 && balance <= 2 && <div style={{fontSize:12,marginTop:6,fontWeight:600}}>Осталось мало — продлите заранее</div>}
+      </div>
+
+      {/* Статистика */}
       <div className="card" style={{display:'flex',justifyContent:'space-around',textAlign:'center'}}>
         <div><div style={{fontSize:20,fontWeight:700}}>{stats.total}</div><div style={{fontSize:11,color:'var(--text2)'}}>Всего</div></div>
         <div><div style={{fontSize:20,fontWeight:700,color:'var(--green)'}}>{stats.attended}</div><div style={{fontSize:11,color:'var(--text2)'}}>Посетил</div></div>

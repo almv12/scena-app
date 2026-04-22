@@ -44,6 +44,10 @@ export default function Admin({ page }) {
   const [nameValue, setNameValue] = useState('')
   // НОВОЕ: редактирование статуса/источника
   const [detailEdit, setDetailEdit] = useState(null)
+  // НОВОЕ: баланс и пакеты
+  const [balanceEdit, setBalanceEdit] = useState(null)
+  const [balanceAmount, setBalanceAmount] = useState('')
+  const [packages, setPackages] = useState([])
 
   useEffect(function() { loadData() }, [page, dateFilter])
 
@@ -68,6 +72,9 @@ export default function Admin({ page }) {
         var sd = await s.json()
         if (sd.ok) setStaff(sd.staff || [])
       } catch(e) { setStaff([]) }
+      // Загружаем пакеты
+      var { data: pkgs } = await supabase.from('lesson_packages').select('*').eq('is_active', true).order('lessons_count')
+      if (pkgs) setPackages(pkgs)
     }
     setLoading(false)
   }
@@ -126,6 +133,25 @@ export default function Admin({ page }) {
 
     await supabase.from('users').update(updates).eq('id', detailEdit.id)
     setDetailEdit(null); loadData()
+  }
+
+  // НОВОЕ: пополнить баланс
+  async function addBalance(userId, amount, pkgName) {
+    if (!amount || amount <= 0) return
+    var user = users.find(function(u) { return u.id === userId })
+    var newBalance = (user?.lessons_balance || 0) + amount
+    await supabase.from('users').update({
+      lessons_balance: newBalance,
+      subscription_type: pkgName || null
+    }).eq('id', userId)
+    setBalanceEdit(null); setBalanceAmount(''); loadData()
+  }
+
+  async function setBalanceDirect(userId) {
+    var amount = parseInt(balanceAmount)
+    if (isNaN(amount) || amount < 0) return
+    await supabase.from('users').update({ lessons_balance: amount }).eq('id', userId)
+    setBalanceEdit(null); setBalanceAmount(''); loadData()
   }
 
   async function sendBroadcast() {
@@ -235,6 +261,13 @@ export default function Admin({ page }) {
                 {u.notes && (
                   <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:'#E08A3C20',color:'#E08A3C',fontWeight:600}} title={u.notes}>📝</span>
                 )}
+                {/* Баланс уроков */}
+                {u.role === 'student' && (
+                  <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,fontWeight:700,
+                    background: (u.lessons_balance||0) <= 0 ? '#D4574E20' : (u.lessons_balance||0) <= 2 ? '#E08A3C20' : '#3BA67620',
+                    color: (u.lessons_balance||0) <= 0 ? '#D4574E' : (u.lessons_balance||0) <= 2 ? '#E08A3C' : '#3BA676'
+                  }}>🎟 {u.lessons_balance || 0} ур.</span>
+                )}
               </div>
             </div>
             <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
@@ -242,6 +275,10 @@ export default function Admin({ page }) {
               {/* Кнопка статус/источник для учеников */}
               {u.role === 'student' && (
                 <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:'var(--bg3)',color:'var(--text2)',cursor:'pointer'}} onClick={function(){setDetailEdit({id:u.id,student_status:u.student_status||'active',source:u.source||'',notes:u.notes||'',frozen_until:u.frozen_until||'',trial_date:u.trial_date||''})}}>⚙️ Подробнее</span>
+              )}
+              {/* Кнопка пополнения баланса */}
+              {u.role === 'student' && (
+                <span style={{fontSize:10,padding:'2px 6px',borderRadius:6,background:'var(--gold-light)',color:'var(--gold)',cursor:'pointer',fontWeight:600}} onClick={function(){setBalanceEdit(u.id);setBalanceAmount(String(u.lessons_balance||0))}}>🎟 Баланс</span>
               )}
             </div>
           </div>
@@ -297,6 +334,36 @@ export default function Admin({ page }) {
                 <button className="btn btn-secondary" style={{flex:1,padding:6,fontSize:11}} onClick={function(){changeRole(u.id,'student');setEditId(null)}}>Без привязки</button>
                 <button className="btn btn-secondary" style={{flex:1,padding:6,fontSize:11,color:'var(--text3)'}} onClick={function(){setEditId(null);setSearchResults([]);setSearchPhone('')}}>Отмена</button>
               </div>
+            </div>
+          )}
+
+          {/* Пополнение баланса */}
+          {u.role === 'student' && balanceEdit === u.id && (
+            <div style={{marginTop:10,padding:10,background:'var(--bg3)',borderRadius:10}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Баланс уроков: {u.lessons_balance || 0}</div>
+
+              {/* Быстрые пакеты */}
+              {packages.length > 0 && (
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:12,color:'var(--text2)',marginBottom:4}}>Добавить пакет:</div>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                    {packages.map(function(pkg) {
+                      return <button key={pkg.id} className="btn btn-secondary" style={{padding:'6px 10px',fontSize:11}}
+                        onClick={function(){addBalance(u.id, pkg.lessons_count, pkg.name)}}>
+                        +{pkg.lessons_count} ({pkg.name})
+                      </button>
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Ручной ввод */}
+              <div style={{fontSize:12,color:'var(--text2)',marginBottom:4}}>Или установить вручную:</div>
+              <div style={{display:'flex',gap:6}}>
+                <input type="number" value={balanceAmount} onChange={function(e){setBalanceAmount(e.target.value)}} placeholder="Кол-во уроков" style={{flex:1,padding:8,borderRadius:8,border:'1px solid var(--border)',fontSize:14,background:'var(--bg2)',color:'var(--text)'}} />
+                <button className="btn btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={function(){setBalanceDirect(u.id)}}>Сохранить</button>
+              </div>
+              <button className="btn btn-secondary" style={{marginTop:6,padding:6,fontSize:11,color:'var(--text3)'}} onClick={function(){setBalanceEdit(null)}}>Отмена</button>
             </div>
           )}
 
