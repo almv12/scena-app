@@ -355,7 +355,65 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, no_checkin: sent })
     }
 
-    return res.status(200).json({ ok: true, actions: 'broadcast, morning, remind, before_lesson, evening, daily_report, weekly_report, no_checkin' })
+    // ═══ FOLLOW-UP ПОСЛЕ ПРОБНОГО (каждый час) ═══
+    // 2 часа после → «Как вам урок?»
+    // 2 дня после → «Готовы продолжить?»
+    // 7 дней после → «Специальное предложение!»
+    if (action === 'follow_up') {
+      var now = new Date()
+      var sent = 0
+
+      // Ищем учеников со статусом trial и trial_date
+      var trRes = await fetch(supabaseUrl + '/rest/v1/users?select=*&student_status=eq.trial&trial_date=not.is.null', { headers: headers })
+      var trialStudents = await trRes.json() || []
+
+      for (var i = 0; i < trialStudents.length; i++) {
+        var st = trialStudents[i]
+        if (!st.telegram_id || !st.trial_date) continue
+
+        var trialDate = new Date(st.trial_date + 'T12:00:00+05:00')
+        var hoursSince = (now - trialDate) / 1000 / 60 / 60
+        var msg = null
+
+        // 2 часа после пробного (между 1.5 и 3 часами)
+        if (hoursSince >= 1.5 && hoursSince < 3) {
+          msg = '👋 Привет, ' + (st.full_name || '') + '!\n\nКак вам пробный урок в Сцене? Надеемся, вам понравилось! 🎵\n\nЕсли есть вопросы — напишите нам, с удовольствием ответим!'
+        }
+        // 2 дня после (между 47 и 49 часов)
+        else if (hoursSince >= 47 && hoursSince < 49) {
+          msg = '🎶 ' + (st.full_name || '') + ', готовы продолжить обучение?\n\nПосле пробного урока самое время начать регулярные занятия! Первые результаты вы увидите уже через месяц.\n\n📞 Напишите нам, чтобы выбрать расписание!'
+        }
+        // 7 дней после (между 167 и 169 часов)
+        else if (hoursSince >= 167 && hoursSince < 169) {
+          msg = '🎁 Специальное предложение для ' + (st.full_name || '') + '!\n\nМы подготовили для вас скидку на первый абонемент. Начните заниматься музыкой прямо сейчас!\n\n📚 8 уроков со скидкой 5%\n\nНапишите нам — расскажем подробнее! 🎵'
+        }
+
+        if (msg) {
+          try { await sendTg(botToken, st.telegram_id, msg); sent++ } catch(e) {}
+        }
+      }
+
+      // Также проверяем лидов из CRM
+      var crmRes = await fetch(supabaseUrl + '/rest/v1/crm_leads?select=*&stage=eq.trial_done&next_follow_up=not.is.null', { headers: headers })
+      var crmLeads = await crmRes.json() || []
+
+      for (var i = 0; i < crmLeads.length; i++) {
+        var lead = crmLeads[i]
+        if (!lead.next_follow_up) continue
+        var followDate = new Date(lead.next_follow_up)
+        var diffMin = (now - followDate) / 1000 / 60
+
+        // Если время follow-up прошло (от 0 до 60 мин назад) — уведомление директору
+        if (diffMin >= 0 && diffMin < 60) {
+          var crmMsg = '📞 Follow-up напоминание!\n\n👤 ' + (lead.full_name || '—') + '\n📱 ' + (lead.phone || '—') + '\n🎵 ' + (lead.instrument || '') + '\n\nПора позвонить!'
+          try { await sendTg(botToken, DIRECTOR_ID, crmMsg); sent++ } catch(e) {}
+        }
+      }
+
+      return res.status(200).json({ ok: true, follow_up: sent })
+    }
+
+    return res.status(200).json({ ok: true, actions: 'broadcast, morning, remind, before_lesson, evening, daily_report, weekly_report, no_checkin, follow_up' })
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message })
   }
@@ -376,4 +434,3 @@ async function getRecords(token, company, from, to) {
   var d = await r.json()
   return d.data || []
 }
-
