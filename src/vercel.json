@@ -31,7 +31,10 @@
     {
       "path": "/api/notify?action=follow_up",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/notify?action=unfreeze",
+      "schedule": "0 1 * * *"
     }
   ]
 }
-

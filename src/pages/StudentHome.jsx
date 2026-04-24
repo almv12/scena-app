@@ -10,6 +10,7 @@ export default function StudentHome({ user }) {
   const [ratedIds, setRatedIds] = useState([])
   const [balance, setBalance] = useState(0)
   const [subType, setSubType] = useState('')
+  const [frozenUntil, setFrozenUntil] = useState(null)
   // Перенос урока
   const [reschedule, setReschedule] = useState(null)
   const [rescheduleDate, setRescheduleDate] = useState('')
@@ -22,10 +23,11 @@ export default function StudentHome({ user }) {
   useEffect(function() { loadData() }, [])
 
   async function loadData() {
-    var { data: freshUser } = await supabase.from('users').select('lessons_balance, subscription_type').eq('id', user.id).single()
+    var { data: freshUser } = await supabase.from('users').select('lessons_balance, subscription_type, frozen_until, student_status').eq('id', user.id).single()
     if (freshUser) {
       setBalance(freshUser.lessons_balance || 0)
       setSubType(freshUser.subscription_type || '')
+      setFrozenUntil(freshUser.student_status === 'frozen' && freshUser.frozen_until ? freshUser.frozen_until : null)
     }
 
     var clientId = user.altegio_client_id
@@ -176,6 +178,16 @@ export default function StudentHome({ user }) {
   return (
     <div className="page">
       <div className="greeting"><h1>Привет, {firstName}!</h1><p>{loading?'Загрузка...':stats.total+' уроков в этом месяце'}</p></div>
+
+      {/* Баннер заморозки */}
+      {frozenUntil && (
+        <div className="card" style={{background:'linear-gradient(135deg, #4A7EC7, #6B9AD8)',color:'#fff',textAlign:'center',padding:16}}>
+          <div style={{fontSize:22}}>❄️</div>
+          <div style={{fontSize:15,fontWeight:800,margin:'6px 0'}}>Заморозка активна</div>
+          <div style={{fontSize:13,opacity:0.9}}>Занятия приостановлены до {frozenUntil.split('-').reverse().join('.')}</div>
+          <div style={{fontSize:12,opacity:0.7,marginTop:6}}>После этой даты статус автоматически изменится и мы вам напишем!</div>
+        </div>
+      )}
 
       {/* Баланс */}
       <div className="card" style={{background:'linear-gradient(135deg, var(--gold-light), var(--gold))',color:'#fff',textAlign:'center',padding:16}}>

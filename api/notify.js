@@ -413,7 +413,44 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, follow_up: sent })
     }
 
-    return res.status(200).json({ ok: true, actions: 'broadcast, morning, remind, before_lesson, evening, daily_report, weekly_report, no_checkin, follow_up' })
+    // ═══ АВТОВОЗВРАТ ИЗ ЗАМОРОЗКИ (каждый день в 06:00) ═══
+    if (action === 'unfreeze') {
+      var today = new Date().toISOString().slice(0, 10)
+      var sent = 0
+
+      // Ищем учеников с frozen_until <= сегодня
+      var frRes = await fetch(supabaseUrl + '/rest/v1/users?select=*&student_status=eq.frozen&frozen_until=lte.' + today, { headers: headers })
+      var frozenStudents = await frRes.json() || []
+
+      for (var i = 0; i < frozenStudents.length; i++) {
+        var st = frozenStudents[i]
+
+        // Возвращаем статус active
+        await fetch(supabaseUrl + '/rest/v1/users?id=eq.' + st.id, {
+          method: 'PATCH',
+          headers: headers,
+          body: JSON.stringify({
+            student_status: 'returned',
+            frozen_until: null
+          })
+        })
+
+        // Уведомление ученику
+        if (st.telegram_id) {
+          var msg = '🎉 ' + (st.full_name || '') + ', ваша заморозка закончилась!\n\nМы рады видеть вас снова! Свяжитесь с нами чтобы возобновить занятия.\n\n📞 Напишите администратору для записи на урок! 🎵'
+          try { await sendTg(botToken, st.telegram_id, msg); sent++ } catch(e) {}
+        }
+
+        // Уведомление директору
+        try {
+          await sendTg(botToken, DIRECTOR_ID, '🔓 Заморозка закончилась!\n\n👤 ' + (st.full_name || '—') + '\n📱 ' + (st.phone || '—') + '\n\nСтатус изменён на «Вернулся». Свяжитесь с учеником!')
+        } catch(e) {}
+      }
+
+      return res.status(200).json({ ok: true, unfrozen: sent, total_checked: frozenStudents.length })
+    }
+
+    return res.status(200).json({ ok: true, actions: 'broadcast, morning, remind, before_lesson, evening, daily_report, weekly_report, no_checkin, follow_up, unfreeze' })
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message })
   }
