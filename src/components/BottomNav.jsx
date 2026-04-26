@@ -20,7 +20,13 @@ export default function BottomNav({ currentPage, onNavigate, role }) {
     { id: 'users', label: '👥', sub: 'Юзеры' }
   ]
 
-  var tabs = role === 'admin' ? adminTabs : role === 'teacher' ? teacherTabs : studentTabs
+  var financeTabs = [
+    { id: 'home', label: '📊', sub: 'P&L' },
+    { id: 'income', label: '📈', sub: 'Доходы' },
+    { id: 'expenses', label: '📉', sub: 'Расходы' }
+  ]
+
+  var tabs = role === 'admin' ? adminTabs : role === 'teacher' ? teacherTabs : role === 'finance' ? financeTabs : studentTabs
 
   return (
     <div className="bottom-nav">

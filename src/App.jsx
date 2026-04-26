@@ -13,6 +13,8 @@ import Ratings from './pages/Ratings'
 import Analytics from './pages/Analytics'
 import Referral from './pages/Referral'
 import Schedule from './pages/Schedule'
+import FinanceApp from './pages/FinanceApp'
+import { supabase } from './lib/supabase'
 
 function TeacherStudents({ user }) {
   const [students, setStudents] = useState([])
@@ -67,7 +69,12 @@ function App() {
   const [markOpen, setMarkOpen] = useState(false)
   const [trialSent, setTrialSent] = useState(false)
 
-  if (!user) return <Login onLogin={function(u){setUser(u);setCurrentPage(u.role==='admin'?'schedule':'home')}} />
+  if (!user) return <Login onLogin={function(u){
+    setUser(u)
+    if (u.role === 'admin') setCurrentPage('schedule')
+    else if (u.role === 'finance') setCurrentPage('home')
+    else setCurrentPage('home')
+  }} />
 
   if (user.role === 'pending') {
     return (
@@ -101,6 +108,7 @@ function App() {
   if (user.role === 'rejected') return <div className="login-page"><div className="login-logo">🎵</div><h1>Сцена</h1><p style={{color:'var(--text2)'}}>Ваша заявка не одобрена.</p></div>
 
   function renderPage() {
+    // АДМИН
     if (user.role === 'admin') {
       if (currentPage === 'schedule') return <Schedule />
       if (currentPage === 'approve') return <Approve />
@@ -108,6 +116,11 @@ function App() {
       if (currentPage === 'ratings') return <Ratings />
       return <Admin page={currentPage} />
     }
+    // ФИНАНСИСТ
+    if (user.role === 'finance') {
+      return <FinanceApp page={currentPage} />
+    }
+    // ПЕДАГОГ
     if (user.role === 'teacher') {
       if (markOpen) return <MarkLesson user={user} onBack={function(){setMarkOpen(false)}} />
       if (currentPage === 'home') return (<div><TeacherHome user={user} /><div style={{padding:'0 16px 16px'}}><button className="btn btn-primary" onClick={function(){setMarkOpen(true)}}>Отметить урок</button></div></div>)
@@ -115,6 +128,7 @@ function App() {
       if (currentPage === 'students') return <TeacherStudents user={user} />
       return <TeacherHome user={user} />
     }
+    // УЧЕНИК
     if (currentPage === 'home') return <StudentHome user={user} />
     if (currentPage === 'progress') return <Progress user={user} />
     if (currentPage === 'referral') return <Referral user={user} />
@@ -131,3 +145,4 @@ function App() {
 }
 
 export default App
+
