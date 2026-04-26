@@ -15,7 +15,7 @@ export default function BottomNav({ currentPage, onNavigate, role }) {
   var adminTabs = [
     { id: 'schedule', label: '📅', sub: 'Расписание' },
     { id: 'approve', label: '✅', sub: 'Проверка' },
-    { id: 'analytics', label: '📊', sub: 'Анализ' },
+    { id: 'finance_tab', label: '💰', sub: 'Финансы' },
     { id: 'notify', label: '📢', sub: 'Рассылка' },
     { id: 'users', label: '👥', sub: 'Юзеры' }
   ]
@@ -41,3 +41,4 @@ export default function BottomNav({ currentPage, onNavigate, role }) {
     </div>
   )
 }
+

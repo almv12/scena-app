@@ -114,11 +114,12 @@ function App() {
       if (currentPage === 'approve') return <Approve />
       if (currentPage === 'analytics') return <Analytics />
       if (currentPage === 'ratings') return <Ratings />
+      if (currentPage === 'finance_tab') return <FinanceApp page="home" user={user} />
       return <Admin page={currentPage} />
     }
     // ФИНАНСИСТ
     if (user.role === 'finance') {
-      return <FinanceApp page={currentPage} />
+      return <FinanceApp page={currentPage} user={user} />
     }
     // ПЕДАГОГ
     if (user.role === 'teacher') {
