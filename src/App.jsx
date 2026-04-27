@@ -65,18 +65,26 @@ function TeacherStudents({ user }) {
 
 function App() {
   const [user, setUser] = useState(null)
-  const [currentPage, setCurrentPage] = useState('schedule')
+  const [currentPage, setCurrentPage] = useState('home')
   const [markOpen, setMarkOpen] = useState(false)
   const [trialSent, setTrialSent] = useState(false)
 
-  if (!user) return <Login onLogin={function(u){
+  function handleLogin(u) {
     setUser(u)
-    if (u.role === 'admin') setCurrentPage('schedule')
-    else if (u.role === 'finance') setCurrentPage('home')
+    // Устанавливаем начальную страницу по роли
+    var r = (u.role || '').trim().toLowerCase()
+    if (r === 'admin') setCurrentPage('schedule')
+    else if (r === 'finance') setCurrentPage('home')
+    else if (r === 'teacher') setCurrentPage('home')
     else setCurrentPage('home')
-  }} />
+  }
 
-  if (user.role === 'pending') {
+  if (!user) return <Login onLogin={handleLogin} />
+
+  // Нормализуем роль (на случай пробелов, регистра)
+  var role = (user.role || '').trim().toLowerCase()
+
+  if (role === 'pending') {
     return (
       <div className="login-page">
         <div className="login-logo">🎵</div><h1>Сцена</h1>
@@ -105,11 +113,16 @@ function App() {
     )
   }
 
-  if (user.role === 'rejected') return <div className="login-page"><div className="login-logo">🎵</div><h1>Сцена</h1><p style={{color:'var(--text2)'}}>Ваша заявка не одобрена.</p></div>
+  if (role === 'rejected') return <div className="login-page"><div className="login-logo">🎵</div><h1>Сцена</h1><p style={{color:'var(--text2)'}}>Ваша заявка не одобрена.</p></div>
 
+  // ═══ РЕНДЕР СТРАНИЦЫ ═══
   function renderPage() {
+    // ФИНАНСИСТ — проверяем ПЕРВЫМ чтобы не попал в другие ветки
+    if (role === 'finance') {
+      return <FinanceApp page={currentPage} user={user} />
+    }
     // АДМИН
-    if (user.role === 'admin') {
+    if (role === 'admin') {
       if (currentPage === 'schedule') return <Schedule />
       if (currentPage === 'approve') return <Approve />
       if (currentPage === 'analytics') return <Analytics />
@@ -117,30 +130,25 @@ function App() {
       if (currentPage === 'finance_tab') return <FinanceApp page="home" user={user} />
       return <Admin page={currentPage} />
     }
-    // ФИНАНСИСТ
-    if (user.role === 'finance') {
-      return <FinanceApp page={currentPage} user={user} />
-    }
     // ПЕДАГОГ
-    if (user.role === 'teacher') {
+    if (role === 'teacher') {
       if (markOpen) return <MarkLesson user={user} onBack={function(){setMarkOpen(false)}} />
       if (currentPage === 'home') return (<div><TeacherHome user={user} /><div style={{padding:'0 16px 16px'}}><button className="btn btn-primary" onClick={function(){setMarkOpen(true)}}>Отметить урок</button></div></div>)
       if (currentPage === 'salary') return <Salary user={user} />
       if (currentPage === 'students') return <TeacherStudents user={user} />
       return <TeacherHome user={user} />
     }
-    // УЧЕНИК
+    // УЧЕНИК (по умолчанию)
     if (currentPage === 'home') return <StudentHome user={user} />
     if (currentPage === 'progress') return <Progress user={user} />
     if (currentPage === 'referral') return <Referral user={user} />
-    if (currentPage === 'pay') return (<div className="page"><div className="breadcrumb"><button onClick={function(){setCurrentPage('home')}}>← Назад</button><span>Оплата</span></div><div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontSize:12,color:'var(--text2)'}}>Остаток</div><div style={{fontSize:24,fontWeight:700}}>4 из 8</div></div><button className="btn btn-primary" style={{width:'auto',padding:'10px 20px'}}>Пополнить</button></div></div>)
     return <StudentHome user={user} />
   }
 
   return (
     <div className="app">
       {renderPage()}
-      {!markOpen && <BottomNav currentPage={currentPage} onNavigate={function(p){setCurrentPage(p);setMarkOpen(false)}} role={user.role} />}
+      {!markOpen && <BottomNav currentPage={currentPage} onNavigate={function(p){setCurrentPage(p);setMarkOpen(false)}} role={role} />}
     </div>
   )
 }
