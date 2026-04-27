@@ -450,7 +450,80 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, unfrozen: sent, total_checked: frozenStudents.length })
     }
 
-    return res.status(200).json({ ok: true, actions: 'broadcast, morning, remind, before_lesson, evening, daily_report, weekly_report, no_checkin, follow_up, unfreeze' })
+    // ═══ АВТОСОЗДАНИЕ ПОВТОРЯЮЩИХСЯ РАСХОДОВ (1-е число каждого месяца) ═══
+    if (action === 'auto_expenses') {
+      var now = new Date()
+      var month = now.getMonth() + 1
+      var year = now.getFullYear()
+      var created = 0
+
+      // Получаем шаблоны
+      var reRes = await fetch(supabaseUrl + '/rest/v1/recurring_expenses?select=*&is_active=eq.true', { headers: headers })
+      var templates = await reRes.json() || []
+
+      for (var i = 0; i < templates.length; i++) {
+        var t = templates[i]
+        // Проверяем не создан ли уже за этот месяц
+        if (t.last_created_month === month && t.last_created_year === year) continue
+
+        // Создаём расход
+        var expDate = year + '-' + String(month).padStart(2, '0') + '-' + String(t.day_of_month || 1).padStart(2, '0')
+        await fetch(supabaseUrl + '/rest/v1/expenses', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            category: t.category,
+            description: (t.description || '') + ' (авто)',
+            amount: t.amount,
+            branch_name: t.branch_name || null,
+            vendor: t.vendor || null,
+            expense_date: expDate,
+            created_by_name: 'Система',
+            created_by_role: 'auto',
+          })
+        })
+
+        // Обновляем last_created
+        await fetch(supabaseUrl + '/rest/v1/recurring_expenses?id=eq.' + t.id, {
+          method: 'PATCH',
+          headers: headers,
+          body: JSON.stringify({ last_created_month: month, last_created_year: year })
+        })
+        created++
+      }
+
+      // Уведомление директору
+      if (created > 0) {
+        try { await sendTg(botToken, DIRECTOR_ID, '📋 Автоматически создано ' + created + ' повторяющихся расходов за ' + month + '/' + year) } catch(e) {}
+      }
+
+      return res.status(200).json({ ok: true, auto_expenses: created })
+    }
+
+    // ═══ НАПОМИНАНИЕ О НЕОПЛАЧЕННЫХ УЧЕНИКАХ (каждый день) ═══
+    if (action === 'payment_reminder') {
+      var sent = 0
+
+      // Ученики с балансом 0
+      var zeroRes = await fetch(supabaseUrl + '/rest/v1/users?select=*&role=eq.student&lessons_balance=eq.0&student_status=eq.active', { headers: headers })
+      var zeroStudents = await zeroRes.json() || []
+
+      if (zeroStudents.length > 0) {
+        var msg = '💳 Ученики с нулевым балансом (' + zeroStudents.length + '):\n\n'
+        for (var i = 0; i < Math.min(zeroStudents.length, 15); i++) {
+          var s = zeroStudents[i]
+          msg += '• ' + (s.full_name || '—') + (s.phone ? ' ' + s.phone : '') + '\n'
+        }
+        if (zeroStudents.length > 15) msg += '...и ещё ' + (zeroStudents.length - 15)
+        msg += '\n📞 Свяжитесь для продления абонемента!'
+
+        try { await sendTg(botToken, DIRECTOR_ID, msg); sent++ } catch(e) {}
+      }
+
+      return res.status(200).json({ ok: true, payment_reminder: sent, zero_balance: zeroStudents.length })
+    }
+
+    return res.status(200).json({ ok: true, actions: 'broadcast, morning, remind, before_lesson, evening, daily_report, weekly_report, no_checkin, follow_up, unfreeze, auto_expenses, payment_reminder' })
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message })
   }

@@ -1,41 +1,15 @@
 {
   "crons": [
-    {
-      "path": "/api/notify?action=morning",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/notify?action=remind",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/notify?action=before_lesson",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/notify?action=evening",
-      "schedule": "0 15 * * *"
-    },
-    {
-      "path": "/api/notify?action=daily_report",
-      "schedule": "0 16 * * *"
-    },
-    {
-      "path": "/api/notify?action=weekly_report",
-      "schedule": "0 4 * * 1"
-    },
-    {
-      "path": "/api/notify?action=no_checkin",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/notify?action=follow_up",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/notify?action=unfreeze",
-      "schedule": "0 1 * * *"
-    }
+    { "path": "/api/notify?action=morning", "schedule": "0 3 * * *" },
+    { "path": "/api/notify?action=remind", "schedule": "0 * * * *" },
+    { "path": "/api/notify?action=before_lesson", "schedule": "*/15 * * * *" },
+    { "path": "/api/notify?action=evening", "schedule": "0 15 * * *" },
+    { "path": "/api/notify?action=daily_report", "schedule": "0 16 * * *" },
+    { "path": "/api/notify?action=weekly_report", "schedule": "0 4 * * 1" },
+    { "path": "/api/notify?action=no_checkin", "schedule": "*/30 * * * *" },
+    { "path": "/api/notify?action=follow_up", "schedule": "0 * * * *" },
+    { "path": "/api/notify?action=unfreeze", "schedule": "0 1 * * *" },
+    { "path": "/api/notify?action=auto_expenses", "schedule": "0 2 1 * *" },
+    { "path": "/api/notify?action=payment_reminder", "schedule": "0 7 * * *" }
   ]
 }
-
